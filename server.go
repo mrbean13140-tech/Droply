@@ -91,6 +91,7 @@ func serve(cfg *Config) {
 	mux.HandleFunc("POST /api/files/rename", s.auth(s.csrf(s.renameFile)))
 	mux.HandleFunc("POST /api/files/move", s.auth(s.csrf(s.moveFiles)))
 	mux.HandleFunc("GET /api/tree", s.auth(s.folderTree))
+	mux.HandleFunc("GET /api/search", s.auth(s.search))
 	mux.HandleFunc("GET /api/push/key", s.auth(s.pushKey))
 	mux.HandleFunc("POST /api/push/sub", s.auth(s.csrf(s.pushSubscribe)))
 	mux.HandleFunc("DELETE /api/push/sub", s.auth(s.csrf(s.pushUnsubscribe)))
@@ -316,11 +317,13 @@ func joinRel(dir, name string) string {
 }
 
 type fileInfo struct {
-	Name  string `json:"name"`
-	Size  int64  `json:"size"`
-	MTime int64  `json:"mtime"`
-	Dir   bool   `json:"dir,omitempty"`
-	Count int    `json:"count,omitempty"` // файлов в папке
+	Name   string  `json:"name"`
+	Size   int64   `json:"size"`
+	MTime  int64   `json:"mtime"`
+	Dir    bool    `json:"dir,omitempty"`
+	Count  int     `json:"count,omitempty"`  // файлов в папке
+	Dur    float64 `json:"dur,omitempty"`    // длительность видео, с
+	Shared bool    `json:"shared,omitempty"` // есть действующая ссылка
 }
 
 // GET /api/files?dir=папка
@@ -338,6 +341,7 @@ func (s *srv) listFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := []fileInfo{}
+	shared := s.sharedNames(u.Name)
 	for _, e := range ents {
 		i, err := e.Info()
 		if err != nil {
@@ -345,9 +349,10 @@ func (s *srv) listFiles(w http.ResponseWriter, r *http.Request) {
 		}
 		if e.IsDir() {
 			n, cnt := treeSize(filepath.Join(d, e.Name()))
-			out = append(out, fileInfo{e.Name(), n, i.ModTime().Unix(), true, cnt})
+			out = append(out, fileInfo{Name: e.Name(), Size: n, MTime: i.ModTime().Unix(), Dir: true, Count: cnt, Shared: shared[joinRel(rel, e.Name())]})
 		} else if i.Mode().IsRegular() {
-			out = append(out, fileInfo{e.Name(), i.Size(), i.ModTime().Unix(), false, 0})
+			out = append(out, fileInfo{Name: e.Name(), Size: i.Size(), MTime: i.ModTime().Unix(),
+				Dur: videoDuration(filepath.Join(d, e.Name()), i), Shared: shared[joinRel(rel, e.Name())]})
 		}
 	}
 	sort.Slice(out, func(a, b int) bool {
@@ -360,7 +365,8 @@ func (s *srv) listFiles(w http.ResponseWriter, r *http.Request) {
 		return out[a].MTime > out[b].MTime
 	})
 	used, _ := dirSize(s.userFiles(u.Name), s.userPart(u.Name))
-	writeJSON(w, map[string]any{"dir": rel, "files": out, "used": used, "quota": s.userQuota(u), "max_file": s.userMaxFile(u), "ttl_days": s.cfg.TTLDays, "keep": u.Keep})
+	writeJSON(w, map[string]any{"dir": rel, "files": out, "used": used, "quota": s.userQuota(u), "max_file": s.userMaxFile(u), "ttl_days": s.cfg.TTLDays, "keep": u.Keep,
+		"by_kind": usageByKind(s.userFiles(u.Name))})
 }
 
 // POST /api/folders {dir, name}

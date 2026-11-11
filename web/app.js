@@ -7,6 +7,21 @@ let cwd = '';
 const rel = n => cwd ? cwd + '/' + n : n;
 const FOLDER = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.6l2 2H18.5A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>';
 
+const SV = d => `<svg class="ic" viewBox="0 0 24 24">${d}</svg>`;
+const FI = { // иконки типов файлов (линейные, в одном стиле)
+  folder: SV('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  file: SV('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5"/>'),
+  doc: SV('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/>'),
+  sheet: SV('<path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 9h16M4 15h16M10 3v18"/>'),
+  slides: SV('<path d="M3 5h18v11H3zM12 16v4M8 20h8"/>'),
+  img: SV('<path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="1.6"/><path d="M20 16l-5-5-8 8"/>'),
+  vid: SV('<path d="M4 6h11v12H4zM15 10l5-3v10l-5-3"/>'),
+  aud: SV('<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'),
+  zip: SV('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M11 6h1M11 9h1M11 12h1M10 15h2v3h-2z"/>'),
+  app: SV('<path d="M5 4h14v16H5zM9 17h6"/>'),
+  link: SV('<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>'),
+  chev: SV('<path d="M9 6l6 6-6 6"/>'),
+};
 const ICONS = {
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>',
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
@@ -43,10 +58,11 @@ function iconBtn(icon, title, cls) {
   b.innerHTML = ICONS[icon]; b.title = title; b.setAttribute('aria-label', title);
   return b;
 }
+const KIND = { IMG: 'img', VID: 'vid', AUD: 'aud', PDF: 'doc', DOC: 'doc', XLS: 'sheet', PPT: 'slides', ZIP: 'zip', APP: 'app' };
 function badge(name) {
   const ext = (name.split('.').pop() || '').toLowerCase();
   const t = TYPES.find(t => t[0].test(ext));
-  const b = el('div', 'badge', t ? t[1] : (ext.slice(0, 4) || 'FILE'));
+  const b = el('div', 'badge fi'); b.innerHTML = FI[t ? KIND[t[1]] : 'file'];
   return b;
 }
 function ago(ts) {
@@ -227,56 +243,129 @@ function renderCrumbs() {
 }
 function openDir(path) { cwd = path; loadFiles(); }
 
+function hello(name) {
+  const h = new Date().getHours();
+  const g = h >= 5 && h < 12 ? 'Доброе утро' : h >= 12 && h < 17 ? 'Добрый день' : h >= 17 && h < 23 ? 'Добрый вечер' : 'Доброй ночи';
+  $('#hello').textContent = g + (name ? ', ' + name : '');
+}
+function storage(j) {
+  $('#stUsed').textContent = fmt(j.used);
+  $('#stOf').textContent = 'из ' + fmt(j.quota) + (j.keep ? ' · хранится бессрочно' : ' · хранится ' + j.ttl_days + ' дн.');
+  const k = j.by_kind || {}, pc = v => Math.min(100, (v || 0) / j.quota * 100).toFixed(2) + '%';
+  $('#segImg').style.width = pc(k.img); $('#segVid').style.width = pc(k.vid); $('#segOth').style.width = pc(k.other);
+  $('#lgImg').textContent = fmt(k.img || 0); $('#lgVid').textContent = fmt(k.vid || 0); $('#lgOth').textContent = fmt(k.other || 0);
+}
+const isMedia = f => !f.dir && (VIEW.img.test(f.name) || VIEW.vid.test(f.name));
+const dur = s => { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function dayGroup(ts) {
+  const d = new Date(ts * 1000), now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()) / 1000;
+  if (ts >= t0) return 'Сегодня';
+  if (ts >= t0 - 86400) return 'Вчера';
+  if (ts >= t0 - 6 * 86400) return 'На этой неделе';
+  const m = d.toLocaleDateString('ru', { month: 'long', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  return m[0].toUpperCase() + m.slice(1);
+}
+const plural = (n, a, b, c) => n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c;
+function secHead(title, note) {
+  const h = el('div', 'sec'); h.append(el('b', '', title)); if (note) h.append(el('span', '', note)); return h;
+}
+function thumbURL(f, dir) { return '/api/thumb?name=' + encodeURIComponent(f.name) + (dir ? '&dir=' + encodeURIComponent(dir) : '') + '&v=' + f.mtime; }
+function fileRow(f, dir, onOpen) {
+  const li = el('li', 'clickable');
+  const b = f.dir ? (() => { const x = el('div', 'badge fi'); x.innerHTML = FI.folder; return x; })() : badge(f.name);
+  const info = el('div', 'info');
+  const meta = f.dir ? `${f.count || 0} ${plural(f.count || 0, 'файл', 'файла', 'файлов')} · ${fmt(f.size)}` : `${fmt(f.size)} · ${ago(f.mtime)}`;
+  info.append(el('div', 'name', f.name), el('div', 'meta', (dir !== undefined && dir !== cwd ? '/' + (dir || 'Мои файлы') + ' · ' : '') + meta));
+  if (f.shared) { const s = el('span', 'lk'); s.innerHTML = FI.link; s.title = 'Есть ссылка'; info.firstChild.append(s); }
+  const acts = el('div', 'row-acts');
+  const mo = iconBtn('more', 'Ещё', 'more'); mo.onclick = e => { e.stopPropagation(); openFileMenu(f); };
+  acts.append(mo);
+  if (f.dir) { const c = el('span', 'chev'); c.innerHTML = FI.chev; acts.append(c); }
+  li.onclick = e => { if (!e.target.closest('.row-acts .icon-btn')) onOpen(); };
+  li.append(b, info, acts);
+  return li;
+}
+function mediaTile(f) {
+  const t = el('div', 't clickable');
+  if (/\.(jpe?g|png|gif)$/i.test(f.name)) {
+    const im = el('img'); im.loading = 'lazy'; im.alt = ''; im.src = thumbURL(f, cwd);
+    im.onerror = () => { im.remove(); t.classList.add('noimg'); t.insertAdjacentHTML('afterbegin', FI.img); };
+    t.append(im);
+  } else { t.classList.add('noimg'); t.innerHTML = VIEW.vid.test(f.name) ? FI.vid : FI.img; }
+  if (VIEW.vid.test(f.name)) t.append(el('span', 'dur', f.dur ? dur(f.dur) : '▶'));
+  if (f.shared) { const s = el('span', 'tlk'); s.innerHTML = FI.link; t.append(s); }
+  const mo = el('button', 'tmore'); mo.innerHTML = ICONS.more; mo.title = 'Ещё';
+  mo.onclick = e => { e.stopPropagation(); openFileMenu(f); };
+  t.append(mo);
+  t.onclick = () => openView(f);
+  return t;
+}
+function renderFiles(list) {
+  const root = $('#fileView'); root.replaceChildren();
+  const folders = list.filter(f => f.dir), media = list.filter(isMedia), docs = list.filter(f => !f.dir && !isMedia(f));
+  if (folders.length) {
+    root.append(secHead('Папки', folders.length + ''));
+    const ul = el('ul', 'list card'); folders.forEach(f => ul.append(fileRow(f, undefined, () => openDir(rel(f.name))))); root.append(ul);
+  }
+  if (media.length) {
+    const byDate = fSort === 'new' || fSort === 'old';
+    const groups = [];
+    for (const f of media) {
+      const g = byDate ? dayGroup(f.mtime) : 'Фото и видео';
+      if (!groups.length || groups[groups.length - 1][0] !== g) groups.push([g, []]);
+      groups[groups.length - 1][1].push(f);
+    }
+    for (const [g, fs] of groups) {
+      root.append(secHead(g, fs.length + ' ' + plural(fs.length, 'файл', 'файла', 'файлов')));
+      const grid = el('div', 'tiles'); fs.forEach(f => grid.append(mediaTile(f))); root.append(grid);
+    }
+  }
+  if (docs.length) {
+    root.append(secHead(media.length || folders.length ? 'Документы и другое' : 'Файлы', docs.length + ''));
+    const ul = el('ul', 'list card'); docs.forEach(f => ul.append(fileRow(f, undefined, () => openView(f)))); root.append(ul);
+  }
+}
+let curFiles = [], gridMode = false;
 async function loadFiles() {
+  if (searching()) return runSearch();
   const r = await api('GET', '/api/files?dir=' + encodeURIComponent(cwd));
   if (r.status === 404 && cwd) { cwd = ''; return loadFiles(); }
   const j = await r.json();
   maxFile = j.max_file;
   $('#limit').textContent = fmt(j.max_file);
-  $('#usage').replaceChildren(`${fmt(j.used)} из ${fmt(j.quota)}`, el('span', 'ttl', j.keep ? ' · ∞' : ` · ${j.ttl_days} дн.`));
-  $('#meterFill').style.width = Math.min(100, j.used / j.quota * 100).toFixed(1) + '%';
+  storage(j);
   $('#cntFiles').textContent = j.files.length;
-  renderCrumbs();
+  renderCrumbs(); if (!cwd) $('#crumbs').replaceChildren(); // в корне путь не нужен
   curFiles = arrange(j.files);
-  const ul = $('#files'); ul.replaceChildren();
-  ul.classList.toggle('grid', gridMode);
+  renderFiles(curFiles);
+  if (pendingOpen) { const f = curFiles.find(x => x.name === pendingOpen); pendingOpen = null; if (f) (isMedia(f) || VIEW.doc.test(f.name) ? openView(f) : openFileMenu(f)); }
   $('#empty').hidden = curFiles.length > 0;
-  $('#empty').innerHTML = j.files.length ? 'Здесь нет файлов этого типа.' : 'Здесь пока пусто.<br>Загрузите первый файл.';
-  for (const f of curFiles) {
-    const li = el('li');
-    const info = el('div', 'info');
-    const acts = el('div', 'row-acts');
-    let b;
-    if (f.dir) {
-      b = el('div', 'badge folder'); b.innerHTML = FOLDER;
-      info.append(el('div', 'name', f.name), el('div', 'meta', gridMode ? `${f.count || 0} файлов` : `папка · ${f.count || 0} файлов · ${fmt(f.size)}`));
-      li.classList.add('clickable');
-      li.onclick = e => { if (!e.target.closest('.row-acts')) openDir(rel(f.name)); };
-    } else {
-      b = badge(f.name);
-      const q = cwd ? '?dir=' + encodeURIComponent(cwd) : '';
-      if (/\.(jpe?g|png|gif)$/i.test(f.name)) {
-        const tb = el('div', 'badge thumb'); const im = el('img'); im.loading = 'lazy'; im.alt = '';
-        im.src = '/api/thumb?name=' + encodeURIComponent(f.name) + (cwd ? '&dir=' + encodeURIComponent(cwd) : '') + '&v=' + f.mtime;
-        const fb = b; im.onerror = () => tb.replaceWith(fb);
-        tb.append(im); b = tb;
-      }
-      if (gridMode && VIEW.vid.test(f.name)) b.append(el('span', 'play', '▶'));
-      info.append(el('div', 'name', f.name), el('div', 'meta', gridMode ? fmt(f.size) : `${fmt(f.size)} · ${ago(f.mtime)}`));
-      if (!gridMode) {
-        const a = el('a', 'icon-btn'); a.innerHTML = ICONS.down; a.title = 'Скачать';
-        a.href = '/f/' + encodeURIComponent(f.name) + q; a.dataset.dl = f.name; a.dataset.size = f.size;
-        acts.append(a);
-      }
-      li.classList.add('clickable');
-      li.onclick = e => { if (!e.target.closest('.row-acts')) openView(f); };
-    }
-    const sh = iconBtn('share', 'Поделиться', 'acc'); sh.onclick = () => openShare(rel(f.name));
-    const mo = iconBtn('more', 'Ещё', 'more'); mo.onclick = () => openFileMenu(f);
-    if (gridMode) acts.append(mo); else acts.append(sh, mo);
-    li.append(b, info, acts); ul.append(li);
-  }
+  $('#empty').innerHTML = j.files.length ? 'Здесь нет файлов этого типа.' : 'Здесь пока пусто.<br>Нажмите ＋, чтобы загрузить файлы.';
 }
+
+// ---- поиск ----
+const searching = () => $('#q').value.trim().length >= 2;
+let sT = 0, pendingOpen = null;
+async function runSearch() {
+  const q = $('#q').value.trim();
+  const r = await api('GET', '/api/search?q=' + encodeURIComponent(q)); const hits = await r.json();
+  if ($('#q').value.trim() !== q) return; // уже ввели другое
+  $('#crumbs').replaceChildren(el('span', 'srch', 'Найдено: ' + hits.length));
+  const root = $('#fileView'); root.replaceChildren();
+  $('#empty').hidden = hits.length > 0; $('#empty').textContent = 'Ничего не найдено.';
+  if (!hits.length) return;
+  const ul = el('ul', 'list card');
+  for (const h of hits) {
+    const f = { name: h.name, size: h.size, mtime: h.mtime, dir: h.is_dir, dur: h.dur };
+    ul.append(fileRow(f, h.dir, () => {
+      $('#q').value = '';
+      if (f.dir) { openDir(h.dir ? h.dir + '/' + h.name : h.name); return; }
+      pendingOpen = f.name; openDir(h.dir);
+    }));
+  }
+  root.append(ul);
+}
+$('#q').addEventListener('input', () => { clearTimeout(sT); sT = setTimeout(loadFiles, 250); });
 
 // ---- фильтр по типу и сортировка ----
 let fType = 'all', fSort = 'new';
@@ -312,22 +401,11 @@ $('#sortSel').onchange = e => {
 };
 syncFilterUI();
 
-// ---- вид: список / галерея ----
-let curFiles = [], gridMode = false;
-try { gridMode = localStorage.getItem('droply-grid') === '1'; } catch {}
-const setGridBtn = () => { $('#gridToggle').textContent = gridMode ? '☰' : '▦'; $('#gridToggle').title = gridMode ? 'Списком' : 'Плиткой (галерея)'; };
-setGridBtn();
-$('#gridToggle').onclick = () => {
-  gridMode = !gridMode; setGridBtn();
-  try { localStorage.setItem('droply-grid', gridMode ? '1' : '0'); } catch {}
-  loadFiles();
-};
-
 // ---- меню файла: переименовать, переместить, удалить ----
 const fm = $('#fileMenu'); let fmItem = null;
 function openFileMenu(f) {
   fmItem = f; $('#fmName').textContent = f.name;
-  $('#fmShare').hidden = !gridMode; $('#fmDl').hidden = !gridMode || f.dir;
+  $('#fmShare').hidden = false; $('#fmDl').hidden = !!f.dir;
   fm.showModal();
 }
 fm.addEventListener('click', e => { if (e.target === fm) fm.close(); });
@@ -382,7 +460,7 @@ $('#fmMove').onclick = async () => {
 $('#moveCancel').onclick = () => md.close();
 md.addEventListener('click', e => { if (e.target === md) md.close(); });
 
-$('#askFiles').onclick = () => openShare(cwd, 'in');
+$('#askFiles').onclick = () => { addDlg.close(); openShare(cwd, 'in'); };
 
 // ---- просмотр ----
 const view = $('#view');
@@ -431,6 +509,7 @@ view.addEventListener('click', e => { if (e.target === view) closeView(); });
 view.addEventListener('close', () => $('#viewBody').replaceChildren());
 
 $('#newFolder').onclick = async () => {
+  addDlg.close();
   const name = prompt('Название папки');
   if (!name || !name.trim()) return;
   const r = await api('POST', '/api/folders', JSON.stringify({ dir: cwd, name: name.trim() }), jsonHdr);
@@ -441,7 +520,7 @@ $('#newFolder').onclick = async () => {
 async function loadShares() {
   const r = await api('GET', '/api/shares');
   const list = await r.json();
-  $('#cntShares').textContent = list.length;
+  $('#cntShares').textContent = list.length ? list.length + ' ' + plural(list.length, 'активная', 'активные', 'активных') : '';
   const ul = $('#shares'); ul.replaceChildren();
   $('#noshares').hidden = list.length > 0;
   for (const s of list) {
@@ -516,14 +595,18 @@ $('#copy').onclick = async () => {
 $('#share').onclick = () => navigator.share({ title: curName, url: curUrl }).catch(() => {});
 
 // ---- выбор и перетаскивание ----
-const pick = $('#pick'), drop = $('#drop');
+const pick = $('#pick');
 pick.onchange = () => { runQueue([...pick.files]); pick.value = ''; };
-['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
-['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
-drop.addEventListener('drop', e => runQueue([...e.dataTransfer.files]));
-// перетаскивание файла в любое место страницы
-document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop', e => { if (!drop.contains(e.target)) { e.preventDefault(); runQueue([...e.dataTransfer.files]); } });
+// перетаскивание файла в любое место страницы (ПК)
+document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragging'); });
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dragging'); });
+document.addEventListener('drop', e => { e.preventDefault(); document.body.classList.remove('dragging'); if (e.dataTransfer.files.length) runQueue([...e.dataTransfer.files]); });
+// кнопка ＋
+const addDlg = $('#addDlg');
+$('#fab').onclick = () => addDlg.showModal();
+$('#addCancel').onclick = () => addDlg.close();
+addDlg.addEventListener('click', e => { if (e.target === addDlg) addDlg.close(); });
+$('#addUpload').onclick = () => { addDlg.close(); pick.click(); };
 
 // ---- аккаунт ----
 const acc = $('#acc');
@@ -608,7 +691,7 @@ async function loadMe() {
   const r = await api('GET', '/api/me');
   me = await r.json();
   $('#me').textContent = me.name[0];
-  $('#accName').textContent = me.name;
+  $('#accName').textContent = me.name; hello(me.name);
   $('#openUsers').hidden = !me.admin;
   if (me.weak_pw && !acc.open) { // старый простой пароль — просим сменить
     $('#pwForm').reset(); $('#pwWeak').hidden = false; accView('pw'); acc.showModal();

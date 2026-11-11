@@ -17,42 +17,51 @@
 <body>
 <main>
   <header class="top">
-    <div class="brand"><img src="/icon-192.png?v=4" alt=""><span>Droply</span></div>
+    <div><div id="hello" class="hello">&nbsp;</div><h1 class="title">Droply</h1></div>
     <div class="top-r">
-      <button id="bell" class="bell" title="Уведомления" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><i id="bellCnt" hidden></i></button>
+      <button id="bell" class="bell" title="Уведомления" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><i id="bellCnt" hidden></i></button>
       <button id="me" class="avatar" title="Аккаунт">?</button>
     </div>
   </header>
-  <div class="meter" title="Занято"><span id="usage"></span><div class="meter-bar"><i id="meterFill"></i></div></div>
-
-  <label id="drop" class="drop">
-    <input id="pick" type="file" multiple>
-    <span class="drop-icon" aria-hidden="true">
-      <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="currentColor"/><path d="M23 36l9-9 9 9" fill="none" stroke="var(--tile)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </span>
-    <span class="big">Загрузить файлы</span>
-    <span class="hint">нажми или перетащи · до <b id="limit">76 МБ</b></span>
-  </label>
-
+  <section class="stor">
+    <div class="stor-row"><b id="stUsed">…</b><span id="stOf"></span></div>
+    <div class="seg"><i id="segImg" class="c1"></i><i id="segVid" class="c2"></i><i id="segOth" class="c3"></i></div>
+    <div class="leg"><span><em class="c1"></em>Фото <b id="lgImg"></b></span><span><em class="c2"></em>Видео <b id="lgVid"></b></span><span><em class="c3"></em>Другое <b id="lgOth"></b></span></div>
+  </section>
+  <input id="pick" type="file" multiple hidden>
   <ul id="queue" class="list"></ul>
 
-
   <section id="paneFiles" class="pane">
-    <div class="pathbar"><nav id="crumbs" class="crumbs"></nav><div class="pb-acts"><button id="gridToggle" class="ghost small icon-only" title="Плиткой">▦</button><button id="newFolder" class="ghost small">＋ Папка</button></div></div>
-    <div class="filters"><div id="typeChips" class="chips small-chips"><button data-t="all">Все</button><button data-t="img">Фото</button><button data-t="vid">Видео</button><button data-t="doc">Документы</button><button data-t="other">Другое</button></div><label class="sort-wrap" title="Сортировка"><span aria-hidden="true">⇅</span><select id="sortSel" aria-label="Сортировка"><option value="new">Сначала новые</option><option value="old">Сначала старые</option><option value="name">По имени</option><option value="size">Сначала большие</option><option value="small">Сначала маленькие</option></select></label></div>
-    <ul id="files" class="list"></ul>
-    <p id="empty" class="empty" hidden>Здесь пока пусто.<br>Загрузите первый файл.</p>
+    <div class="sbar">
+      <label class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Поиск файлов" autocomplete="off" enterkeyhint="search"></label>
+      <label class="sq" title="Сортировка"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg><select id="sortSel" aria-label="Сортировка"><option value="new">Сначала новые</option><option value="old">Сначала старые</option><option value="name">По имени</option><option value="size">Сначала большие</option><option value="small">Сначала маленькие</option></select></label>
+    </div>
+    <div id="typeChips" class="chips small-chips"><button data-t="all">Все</button><button data-t="img">Фото</button><button data-t="vid">Видео</button><button data-t="doc">Документы</button><button data-t="other">Другое</button></div>
+    <div class="pathbar"><nav id="crumbs" class="crumbs"></nav></div>
+    <div id="fileView"></div>
+    <p id="empty" class="empty" hidden>Здесь пока пусто.<br>Нажмите ＋, чтобы загрузить файлы.</p>
   </section>
   <section id="paneShares" class="pane" hidden>
+    <div class="sec"><b>Ссылки</b><span id="cntShares"></span></div>
     <ul id="shares" class="list"></ul>
-    <p id="noshares" class="empty">Активных ссылок нет.<br>Нажми «Поделиться» у файла.</p>
+    <p id="noshares" class="empty">Активных ссылок нет.<br>Откройте «⋯» у файла → «Поделиться».</p>
   </section>
 </main>
 <nav class="dock" role="tablist">
-  <button class="tab active" data-tab="files" role="tab">Файлы <em id="cntFiles">0</em></button>
-  <button class="tab" data-tab="shares" role="tab">Ссылки <em id="cntShares">0</em></button>
-  <button id="askFiles" class="dock-btn" title="Общая папка или приём файлов по ссылке">Совместно</button>
+  <button class="tab active" data-tab="files" role="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Файлы<em id="cntFiles" hidden></em></button>
+  <button id="fab" class="fab" title="Добавить" aria-label="Добавить"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="tab" data-tab="shares" role="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Ссылки</button>
 </nav>
+<dialog id="addDlg">
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <h2 class="dlg-title">Добавить</h2>
+  <div class="menu add-menu">
+    <button id="addUpload"><svg class="ic" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M5 20h14"/></svg><span>Загрузить файлы<small>один файл — до <b id="limit">76 МБ</b></small></span></button>
+    <button id="newFolder"><svg class="ic" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM12 10v6M9 13h6"/></svg><span>Новая папка<small>в текущей папке</small></span></button>
+    <button id="askFiles"><svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.6M18 19a5 5 0 0 0-2.5-4.3"/></svg><span>Совместная папка<small>общая папка или приём файлов по ссылке</small></span></button>
+  </div>
+  <div class="acts"><button id="addCancel" class="ghost" autofocus>Отмена</button></div>
+</dialog>
 
 <dialog id="dlg">
   <div class="sheet-grip" aria-hidden="true"></div>
