@@ -310,6 +310,14 @@ function mediaTile(f) {
   return t;
 }
 let recentList = [];
+let recentView = 'tile'; try { recentView = localStorage.getItem('recentView') === 'list' ? 'list' : 'tile'; } catch (e) {}
+function recentOpen(h) { if (h.dir === cwd) { const x = curFiles.find(y => y.name === h.name); if (x) return isMedia(x) || VIEW.doc.test(x.name) ? openView(x) : openFileMenu(x); } pendingOpen = h.name; openDir(h.dir); }
+function recentRow(h) {
+  const li = el('li', 'clickable'), c = recentCard(h), p = c.querySelector('.p');
+  p.querySelectorAll('.dur,.tlk').forEach(x => x.remove()); p.classList.add('rth');
+  const info = el('div', 'info'); info.append(el('div', 'name', h.name), el('div', 'meta', fmt(h.size) + ' · ' + ago(h.mtime) + (h.dir ? ' · ' + h.dir : '')));
+  li.append(p, info); li.onclick = () => recentOpen(h); return li;
+}
 function recentCard(h) {
   const c = el('div', 'rc clickable');
   const p = el('div', 'p');
@@ -323,14 +331,22 @@ function recentCard(h) {
   if (VIEW.vid.test(h.name)) p.append(el('span', 'dur', h.dur ? dur(h.dur) : '▶'));
   if (h.shared) { const s = el('span', 'tlk'); s.innerHTML = FI.link; p.append(s); }
   c.append(p, el('div', 'n', h.name), el('div', 'm', fmt(h.size) + ' · ' + ago(h.mtime)));
-  c.onclick = () => { if (h.dir === cwd) { const x = curFiles.find(y => y.name === h.name); if (x) return isMedia(x) || VIEW.doc.test(x.name) ? openView(x) : openFileMenu(x); } pendingOpen = h.name; openDir(h.dir); };
+  c.onclick = () => recentOpen(h);
   return c;
 }
 function renderFiles(list) {
   const root = $('#fileView'); root.replaceChildren();
   if (!cwd && fType === 'all' && recentList.length > 2) {
-    root.append(secHead('Недавние'));
-    const strip = el('div', 'recent'); recentList.forEach(h => strip.append(recentCard(h))); root.append(strip);
+    const hd = secHead('Недавние'), vw = el('div', 'rview');
+    [['tile', '<svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>', 'Плитка'],
+     ['list', '<svg class="ic" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".8"/><circle cx="4" cy="12" r=".8"/><circle cx="4" cy="18" r=".8"/></svg>', 'Список']].forEach(([k, ic, t]) => {
+      const b = el('button', k === recentView ? 'on' : ''); b.innerHTML = ic; b.title = t; b.setAttribute('aria-label', t);
+      b.onclick = () => { recentView = k; try { localStorage.setItem('recentView', k); } catch (e) {} renderFiles(curFiles); };
+      vw.append(b);
+    });
+    hd.append(vw); root.append(hd);
+    if (recentView === 'list') { const ul = el('ul', 'list card rlist'); recentList.slice(0, 6).forEach(h => ul.append(recentRow(h))); root.append(ul); }
+    else { const strip = el('div', 'recent'); recentList.forEach(h => strip.append(recentCard(h))); root.append(strip); }
   }
   const folders = list.filter(f => f.dir), media = list.filter(isMedia), docs = list.filter(f => !f.dir && !isMedia(f));
   if (folders.length) {
@@ -908,17 +924,3 @@ function addEyes(root) {
 
 // очистка поиска
 $('#qx').onclick = () => { const q = $('#q'); q.value = ''; $('#qx').hidden = true; loadFiles(); q.focus(); };
-// тема: авто → светлая → графит
-const THEMES = { auto: 'авто', light: 'светлая', dark: 'графит' };
-function applyTheme(t) {
-  const r = document.documentElement;
-  if (t === 'auto') delete r.dataset.theme; else r.dataset.theme = t;
-  try { localStorage.setItem('theme', t); } catch (e) {}
-  $('#openTheme').textContent = 'Тема: ' + THEMES[t];
-  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelectorAll('meta[name=theme-color]').forEach(m => { m.removeAttribute('media'); m.content = dark ? '#111113' : '#f7f7f8'; });
-}
-let curTheme = 'auto'; try { curTheme = localStorage.getItem('theme') || 'auto'; } catch (e) {}
-if (!THEMES[curTheme]) curTheme = 'auto';
-applyTheme(curTheme);
-$('#openTheme').onclick = () => { const k = Object.keys(THEMES); curTheme = k[(k.indexOf(curTheme) + 1) % 3]; applyTheme(curTheme); };

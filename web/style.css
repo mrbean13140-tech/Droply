@@ -189,18 +189,13 @@ button.icon-only{min-width:38px;padding:9px 10px;font-size:16px}
 /* ===== Droply DS «Graphite» (2026-11-12) =====
    Плоские слои графита, волосяные разделители, один акцент. Стекло — только у нижней панели. */
 :root{
-  --bg:#f7f7f8;--s1:#ffffff;--s2:#f0f0f2;--s3:#e7e7ea;--fg:#111113;--fg2:#5f5f66;--muted:#8e8e95;--hair:rgba(17,17,19,.08);
-  --acc:#5b5bf6;--acc-h:#4c4ce8;--acc-soft:rgba(91,91,246,.12);--line:var(--hair);--soft:var(--s2);--card:var(--s1);
-  --tile:#111113;--tile-fg:#ffffff;--badge:var(--s2);--err:#e5484d;--ok:#30a46c;
-  --inv:#ffffff;color-scheme:light;--r-s:8px;--r-m:12px;--r-l:16px;--e:cubic-bezier(.2,.8,.2,1);
-  --shadow:0 1px 2px rgba(0,0,0,.04);--pop:0 12px 40px rgba(0,0,0,.14)}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
-  --bg:#111113;--s1:#18181b;--s2:#1f1f23;--s3:#28282d;--fg:#ededef;--fg2:#a1a1a8;--muted:#6f6f78;--hair:rgba(255,255,255,.07);
-  --acc:#7c7cff;--acc-h:#8f8fff;--acc-soft:rgba(124,124,255,.16);--tile:#ededef;--tile-fg:#111113;--pop:0 12px 40px rgba(0,0,0,.55);--inv:#111113;color-scheme:dark}}
-:root[data-theme=dark]{
-  --bg:#111113;--s1:#18181b;--s2:#1f1f23;--s3:#28282d;--fg:#ededef;--fg2:#a1a1a8;--muted:#6f6f78;--hair:rgba(255,255,255,.07);
-  --acc:#7c7cff;--acc-h:#8f8fff;--acc-soft:rgba(124,124,255,.16);--tile:#ededef;--tile-fg:#111113;--pop:0 12px 40px rgba(0,0,0,.55);--inv:#111113;color-scheme:dark}
+  --bg:#1a1b1e;--s1:#222327;--s2:#2a2b30;--s3:#35363c;--fg:#ececee;--fg2:#a6a7ae;--muted:#7a7b83;--hair:rgba(255,255,255,.075);
+  --acc:#d9dadf;--acc-h:#ffffff;--on-acc:#1a1b1e;--acc-soft:rgba(255,255,255,.08);--line:var(--hair);--soft:var(--s2);--card:var(--s1);
+  --tile:#ececee;--tile-fg:#1a1b1e;--badge:var(--s2);--err:#ff6369;--ok:#3dd68c;--inv:#1a1b1e;color-scheme:dark;
+  --r-s:8px;--r-m:12px;--r-l:16px;--e:cubic-bezier(.2,.8,.2,1);
+  --shadow:none;--pop:0 16px 48px rgba(0,0,0,.5)}
 html,body{background:var(--bg)}
+body{background:radial-gradient(120% 60% at 50% -10%,#2a2b30 0%,transparent 60%) fixed,var(--bg)}
 body{font-family:"Inter",-apple-system,"SF Pro Text",system-ui,sans-serif;font-size:15px;letter-spacing:-.006em;-webkit-font-smoothing:antialiased}
 main{padding:calc(16px + env(safe-area-inset-top)) 20px calc(104px + env(safe-area-inset-bottom))}
 .ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;display:block}
@@ -228,7 +223,7 @@ button:active,.clickable:active,.t:active,.rc:active,a.icon-btn:active{transform
 .stor-big span{font-size:15px;font-weight:500;color:var(--muted)}
 .seg{display:flex;gap:2px;height:3px;border-radius:2px;background:var(--hair);margin:14px 0 10px;overflow:hidden}
 .seg i{display:block;height:100%}
-.c1{background:var(--fg)}.c2{background:var(--acc)}.c3{background:var(--muted)}
+.c1{background:var(--fg)}.c2{background:#8d8e96}.c3{background:#55565d}
 .leg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--fg2)}
 .leg b{color:var(--fg);font-weight:600;margin-right:4px;font-variant-numeric:tabular-nums}
 .leg .keep{margin-left:auto;color:var(--muted)}
@@ -301,7 +296,7 @@ button:active,.clickable:active,.t:active,.rc:active,a.icon-btn:active{transform
 .list.card li.clickable:active{transform:none;opacity:.6}
 .info .name{font-weight:550;font-size:14.5px}
 .info .meta{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
-.name .lk{display:inline-block;vertical-align:-2px;margin-left:6px;color:var(--acc)}
+.name .lk{display:inline-block;vertical-align:-2px;margin-left:6px;color:var(--fg2)}
 .name .lk .ic{width:14px;height:14px}
 .badge.fi{width:40px;height:40px;border-radius:10px;background:var(--s2);color:var(--fg2);display:grid;place-items:center;border:0}
 .badge.fi.fold{color:var(--fg)}
@@ -316,7 +311,7 @@ button:active,.clickable:active,.t:active,.rc:active,a.icon-btn:active{transform
 .row-acts .chev .ic{width:16px;height:16px}
 .icon-btn{width:34px;height:34px;border-radius:9px;border:0;background:none;color:var(--muted)}
 .icon-btn:hover{background:var(--s2);color:var(--fg)}
-.icon-btn.acc{background:var(--acc);color:#fff}
+.icon-btn.acc{background:var(--acc);color:var(--on-acc)}
 .icon-btn.acc:hover{background:var(--acc-h)}
 
 /* очередь загрузки и прочие списки (ссылки, пользователи) */
@@ -354,20 +349,37 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 .toast{background:var(--fg);color:var(--bg);border-radius:10px;box-shadow:var(--pop);bottom:calc(88px + env(safe-area-inset-bottom))}
 .card{background:var(--s1);border:1px solid var(--hair);box-shadow:none;border-radius:16px}
 
-/* нижняя панель — единственное стекло */
-.dock{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:2px;padding:5px;border-radius:18px;
-  background:color-mix(in srgb,var(--s1) 62%,transparent);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
-  border:1px solid var(--hair);box-shadow:var(--pop)}
-.dock .tab,.dock .dbtn{width:48px;height:42px;border:0;border-radius:12px;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
-.dock .tab:hover,.dock .dbtn:hover{color:var(--fg)}
-.dock .tab.active{color:var(--fg);background:color-mix(in srgb,var(--s3) 70%,transparent)}
-.dock .ic{width:20px;height:20px}
-.fab{width:52px;height:42px;border:0;border-radius:12px;margin:0 4px;background:var(--acc);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 16px var(--acc-soft)}
-.fab:hover{background:var(--acc-h)}
-.fab .ic{width:22px;height:22px;stroke-width:2}
+/* нижняя панель — графитовое жидкое стекло, овальная */
+.dock{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:4px;padding:6px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(70,71,78,.55),rgba(36,37,41,.6));-webkit-backdrop-filter:blur(28px) saturate(160%);backdrop-filter:blur(28px) saturate(160%);
+  border:1px solid rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(0,0,0,.25),0 18px 50px rgba(0,0,0,.55)}
+.dock .tab,.dock .dbtn{width:50px;height:44px;border:0;border-radius:999px;background:none;color:#9a9ba3;display:grid;place-items:center;cursor:pointer;padding:0}
+.dock .tab:hover,.dock .dbtn:hover{color:#fff}
+.dock .tab.active{color:#fff;background:rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.dock .ic{width:21px;height:21px}
+.fab{width:58px;height:44px;border:0;border-radius:999px;margin:0 2px;background:linear-gradient(180deg,#f4f4f6,#cfd0d5);color:#1a1b1e;display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 1px 0 #fff,0 6px 18px rgba(0,0,0,.4)}
+.fab:hover{background:#fff}
+.fab .ic{width:22px;height:22px;stroke-width:2.2}
 body.dragging::after{content:"Отпустите — загрузим";position:fixed;inset:12px;z-index:9;display:grid;place-items:center;border:2px dashed var(--acc);border-radius:20px;font-size:18px;font-weight:600;color:var(--fg);background:color-mix(in srgb,var(--bg) 80%,transparent);pointer-events:none}
 input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
 .qx{flex:none;width:24px;height:24px;margin-right:-4px;border:0;border-radius:50%;padding:0;display:grid;place-items:center;background:var(--s3);color:var(--fg2);cursor:pointer}
 .qx .ic{width:12px;height:12px;stroke-width:2.2}
 .title{display:flex;align-items:center;gap:10px}
-.title .logo{width:30px;height:30px;border-radius:8px;flex:none}
+.title .logo{width:38px;height:38px;border-radius:11px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.22),0 4px 14px rgba(0,0,0,.35);background:#000}
+/* недавние: компактная плитка / список */
+.rview{display:flex;gap:2px;margin-left:auto}
+.rview button{width:30px;height:28px;border:0;border-radius:999px;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.rview button.on{background:var(--s2);color:var(--fg)}
+.rview .ic{width:15px;height:15px}
+.sec:has(.rview){align-items:center}
+.rc{width:96px}
+.rc .p{height:96px;border-radius:14px}
+.rc .p.noimg>.ic{width:24px;height:24px}
+.rc .p.docp .dic{transform:none}
+.rc .n{font-size:12px;margin-top:6px}
+.rc .m{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rlist .rth{width:40px;height:40px;flex:none;border-radius:10px;overflow:hidden;background:var(--s2);display:grid;place-items:center}
+.rlist .rth img{width:100%;height:100%;object-fit:cover}
+.rlist .rth>.ic{width:20px;height:20px}
+.rlist .rth .dic{transform:scale(.8)}
+.bell i{background:#fff}
