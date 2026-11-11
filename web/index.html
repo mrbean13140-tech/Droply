@@ -19,11 +19,11 @@
   <header class="top">
     <div class="brand"><img src="/icon-192.png?v=4" alt=""><span>Droply</span></div>
     <div class="top-r">
-      <div class="meter" title="Занято"><div class="meter-bar"><i id="meterFill"></i></div><span id="usage"></span></div>
       <button id="bell" class="bell" title="Уведомления" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><i id="bellCnt" hidden></i></button>
       <button id="me" class="avatar" title="Аккаунт">?</button>
     </div>
   </header>
+  <div class="meter" title="Занято"><span id="usage"></span><div class="meter-bar"><i id="meterFill"></i></div></div>
 
   <label id="drop" class="drop">
     <input id="pick" type="file" multiple>
@@ -36,13 +36,9 @@
 
   <ul id="queue" class="list"></ul>
 
-  <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="files" role="tab">Файлы <em id="cntFiles">0</em></button>
-    <button class="tab" data-tab="shares" role="tab">Ссылки <em id="cntShares">0</em></button>
-  </nav>
 
   <section id="paneFiles" class="pane">
-    <div class="pathbar"><nav id="crumbs" class="crumbs"></nav><div class="pb-acts"><button id="gridToggle" class="ghost small icon-only" title="Плиткой">▦</button><button id="askFiles" class="ghost small" title="Совместная работа: общая папка или приём файлов по ссылке">Совместно</button><button id="newFolder" class="ghost small">＋ Папка</button></div></div>
+    <div class="pathbar"><nav id="crumbs" class="crumbs"></nav><div class="pb-acts"><button id="gridToggle" class="ghost small icon-only" title="Плиткой">▦</button><button id="newFolder" class="ghost small">＋ Папка</button></div></div>
     <div class="filters"><div id="typeChips" class="chips small-chips"><button data-t="all">Все</button><button data-t="img">Фото</button><button data-t="vid">Видео</button><button data-t="doc">Документы</button><button data-t="other">Другое</button></div><label class="sort-wrap" title="Сортировка"><span aria-hidden="true">⇅</span><select id="sortSel" aria-label="Сортировка"><option value="new">Сначала новые</option><option value="old">Сначала старые</option><option value="name">По имени</option><option value="size">Сначала большие</option><option value="small">Сначала маленькие</option></select></label></div>
     <ul id="files" class="list"></ul>
     <p id="empty" class="empty" hidden>Здесь пока пусто.<br>Загрузите первый файл.</p>
@@ -52,6 +48,11 @@
     <p id="noshares" class="empty">Активных ссылок нет.<br>Нажми «Поделиться» у файла.</p>
   </section>
 </main>
+<nav class="dock" role="tablist">
+  <button class="tab active" data-tab="files" role="tab">Файлы <em id="cntFiles">0</em></button>
+  <button class="tab" data-tab="shares" role="tab">Ссылки <em id="cntShares">0</em></button>
+  <button id="askFiles" class="dock-btn" title="Общая папка или приём файлов по ссылке">Совместно</button>
+</nav>
 
 <dialog id="dlg">
   <div class="sheet-grip" aria-hidden="true"></div>

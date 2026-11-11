@@ -185,3 +185,56 @@ button.icon-only{min-width:38px;padding:9px 10px;font-size:16px}
 .sort-wrap{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:10px;padding:0 10px;color:var(--fg);font-size:15px}
 .sort-wrap select{appearance:none;-webkit-appearance:none;border:0;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236e6e73' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right center;color:inherit;font:inherit;font-size:16px;padding:8px 16px 8px 0;cursor:pointer}
 .sort-wrap select:focus{outline:none}
+
+/* ===== «жидкое стекло» (2026-11-12) ===== */
+:root{
+  --glass:rgba(255,255,255,.55);--glass2:rgba(255,255,255,.32);--edge:rgba(255,255,255,.8);
+  --gshadow:inset 0 1px 0 rgba(255,255,255,.85),0 10px 30px rgba(0,0,0,.07);
+  --bgimg:radial-gradient(60vmax 60vmax at -10% -10%,#c9cbd8 0,transparent 60%),radial-gradient(55vmax 55vmax at 110% 40%,#e6dace 0,transparent 60%),radial-gradient(60vmax 60vmax at 0% 110%,#d2dde4 0,transparent 60%);
+  --bg:#ececf1;--card:rgba(255,255,255,.6);--soft:rgba(255,255,255,.45);--line:rgba(0,0,0,.07);
+}
+@media (prefers-color-scheme:dark){:root{
+  --glass:rgba(44,44,52,.5);--glass2:rgba(60,60,70,.3);--edge:rgba(255,255,255,.14);
+  --gshadow:inset 0 1px 0 rgba(255,255,255,.12),0 10px 30px rgba(0,0,0,.35);
+  --bgimg:radial-gradient(60vmax 60vmax at -10% -10%,#262836 0,transparent 60%),radial-gradient(55vmax 55vmax at 110% 40%,#33291f 0,transparent 60%),radial-gradient(60vmax 60vmax at 0% 110%,#1b2a33 0,transparent 60%);
+  --bg:#050507;--card:rgba(40,40,46,.55);--soft:rgba(255,255,255,.08);--line:rgba(255,255,255,.08);
+}}
+html{background:var(--bg)}
+body{background:var(--bgimg),var(--bg);background-attachment:fixed;min-height:100vh}
+.drop,.list li,.meter,.bell,.chips button,.sort-wrap,button.ghost,.icon-btn,.card,dialog,.dock,.steps li,.menu button,.switch-row,.crumbs,.toast{
+  background:linear-gradient(160deg,var(--glass),var(--glass2));
+  -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+  border:1px solid var(--edge);box-shadow:var(--gshadow)}
+.drop{border-radius:28px;border-style:solid}
+.drop.over{border-color:var(--fg)}
+.list li{border-radius:18px}
+.list.compact li{background:linear-gradient(160deg,var(--glass),var(--glass2))}
+.icon-btn.acc,.chips button.on,.dock .tab.active{background:var(--tile);color:var(--tile-fg);border-color:transparent;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.chips button,.small-chips button{border-radius:999px}
+button.primary{box-shadow:0 6px 18px rgba(0,0,0,.18)}
+dialog{border-radius:28px}
+@media (max-width:520px){dialog{border-radius:28px 28px 0 0}}
+dialog::backdrop{background:rgba(0,0,0,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.toast{color:var(--fg)}
+/* шапка и квота */
+.top{margin-bottom:12px}
+.top-r{gap:8px}
+.bell{width:42px;height:42px}
+.avatar{width:42px;height:42px;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.meter{flex-direction:row;align-items:center;gap:12px;min-width:0;padding:11px 14px;border-radius:18px;margin:0 0 14px;font-size:13px}
+.meter-bar{flex:1;width:auto}
+.meter>span{white-space:nowrap}
+@media (max-width:440px){.meter .ttl{display:inline}.meter{min-width:0}}
+/* галерея */
+#files.grid li{border-radius:18px}
+#files.grid .row-acts .icon-btn{background:rgba(255,255,255,.3);border:0;box-shadow:none;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.pathbar{margin-top:6px}
+.crumbs{border-radius:12px;padding:2px 4px}
+.crumbs:empty{display:none}
+/* нижняя стеклянная панель */
+main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+.dock{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;display:flex;gap:4px;padding:5px;border-radius:999px;width:max-content;max-width:calc(100vw - 24px)}
+.dock button{border:0;background:none;color:var(--muted);font:600 15px/1 inherit;font-family:inherit;padding:11px 16px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.dock .tab em{font-style:normal;font-size:12px;margin-left:3px;opacity:.7}
+.dock-btn:active{background:var(--soft)}
+.toast{bottom:calc(84px + env(safe-area-inset-bottom))}
