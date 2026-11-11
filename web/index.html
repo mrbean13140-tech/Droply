@@ -12,12 +12,13 @@
 <meta name="apple-mobile-web-app-title" content="Droply">
 <meta name="theme-color" content="#f2f2f3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<script src="/theme.js"></script>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
   <header class="top">
-    <div><div id="hello" class="hello">&nbsp;</div><h1 class="title">Droply</h1></div>
+    <div><div id="hello" class="hello">&nbsp;</div><h1 class="title"><img class="logo" src="/icon-192.png?v=4" alt="">Droply</h1></div>
     <div class="top-r">
       <button id="bell" class="bell" title="Уведомления" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><i id="bellCnt" hidden></i></button>
       <button id="me" class="avatar" title="Аккаунт">?</button>
@@ -33,7 +34,7 @@
 
   <section id="paneFiles" class="pane">
     <div class="sbar">
-      <label class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Поиск файлов" autocomplete="off" enterkeyhint="search"></label>
+      <label class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Поиск файлов" autocomplete="off" enterkeyhint="search"><button type="button" id="qx" class="qx" hidden aria-label="Очистить"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></label>
       <label class="sq" title="Сортировка"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg><select id="sortSel" aria-label="Сортировка"><option value="new">Сначала новые</option><option value="old">Сначала старые</option><option value="name">По имени</option><option value="size">Сначала большие</option><option value="small">Сначала маленькие</option></select></label>
     </div>
     <div id="typeChips" class="utabs"><button data-t="all">Обзор</button><button data-t="img">Фото</button><button data-t="vid">Видео</button><button data-t="doc">Документы</button><button data-t="dir">Папки</button></div>
@@ -101,6 +102,7 @@
     <button id="openInv">Пригласить</button>
     <button id="openInst">Установить на телефон</button>
     <button id="openPush" hidden>Push-уведомления</button>
+    <button id="openTheme">Тема: авто</button>
     <button id="openPw">Сменить пароль</button>
     <button id="openUsers" hidden>Пользователи</button>
     <button id="logout" class="danger">Выйти</button>

@@ -389,14 +389,14 @@ async function runSearch() {
   for (const h of hits) {
     const f = { name: h.name, size: h.size, mtime: h.mtime, dir: h.is_dir, dur: h.dur };
     ul.append(fileRow(f, h.dir, () => {
-      $('#q').value = '';
+      $('#q').value = ''; $('#qx').hidden = true;
       if (f.dir) { openDir(h.dir ? h.dir + '/' + h.name : h.name); return; }
       pendingOpen = f.name; openDir(h.dir);
     }));
   }
   root.append(ul);
 }
-$('#q').addEventListener('input', () => { clearTimeout(sT); sT = setTimeout(loadFiles, 250); });
+$('#q').addEventListener('input', () => { $('#qx').hidden = !$('#q').value; clearTimeout(sT); sT = setTimeout(loadFiles, 250); });
 
 // ---- фильтр по типу и сортировка ----
 let fType = 'all', fSort = 'new';
@@ -905,3 +905,20 @@ function addEyes(root) {
     wrap.appendChild(b);
   });
 }
+
+// очистка поиска
+$('#qx').onclick = () => { const q = $('#q'); q.value = ''; $('#qx').hidden = true; loadFiles(); q.focus(); };
+// тема: авто → светлая → графит
+const THEMES = { auto: 'авто', light: 'светлая', dark: 'графит' };
+function applyTheme(t) {
+  const r = document.documentElement;
+  if (t === 'auto') delete r.dataset.theme; else r.dataset.theme = t;
+  try { localStorage.setItem('theme', t); } catch (e) {}
+  $('#openTheme').textContent = 'Тема: ' + THEMES[t];
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelectorAll('meta[name=theme-color]').forEach(m => { m.removeAttribute('media'); m.content = dark ? '#111113' : '#f7f7f8'; });
+}
+let curTheme = 'auto'; try { curTheme = localStorage.getItem('theme') || 'auto'; } catch (e) {}
+if (!THEMES[curTheme]) curTheme = 'auto';
+applyTheme(curTheme);
+$('#openTheme').onclick = () => { const k = Object.keys(THEMES); curTheme = k[(k.indexOf(curTheme) + 1) % 3]; applyTheme(curTheme); };
