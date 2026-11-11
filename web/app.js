@@ -1,0 +1,791 @@
+'use strict';
+const $ = s => document.querySelector(s);
+const CHUNK = 8 * 1024 * 1024;
+const H = { 'X-Landrop': '1' };
+let maxFile = Infinity;
+let cwd = '';
+const rel = n => cwd ? cwd + '/' + n : n;
+const FOLDER = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.6l2 2H18.5A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>';
+
+const ICONS = {
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
+  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  qr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/></svg>',
+};
+const TYPES = [
+  [/^(jpe?g|png|gif|webp|heic|heif|bmp|svg)$/, 'IMG', '#f97316,#f43f5e'],
+  [/^(mp4|mov|mkv|avi|webm|m4v)$/, 'VID', '#8b5cf6,#6366f1'],
+  [/^(mp3|m4a|wav|flac|ogg|aac)$/, 'AUD', '#ec4899,#a855f7'],
+  [/^(pdf)$/, 'PDF', '#ef4444,#f97316'],
+  [/^(docx?|odt|rtf|txt|md|pages)$/, 'DOC', '#3b82f6,#06b6d4'],
+  [/^(xlsx?|csv|ods|numbers)$/, 'XLS', '#10b981,#22c55e'],
+  [/^(pptx?|key|odp)$/, 'PPT', '#f59e0b,#ef4444'],
+  [/^(zip|rar|7z|tar|gz|tgz)$/, 'ZIP', '#64748b,#475569'],
+  [/^(apk|ipa|exe|msi|dmg)$/, 'APP', '#14b8a6,#0ea5e9'],
+];
+
+function fmt(n) {
+  const u = ['Б', 'КБ', 'МБ', 'ГБ'];
+  let i = 0;
+  while (n >= 1024 && i < 3) { n /= 1024; i++; }
+  return (i ? n.toFixed(1) : n) + ' ' + u[i];
+}
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function iconBtn(icon, title, cls) {
+  const b = el('button', 'icon-btn' + (cls ? ' ' + cls : ''));
+  b.innerHTML = ICONS[icon]; b.title = title; b.setAttribute('aria-label', title);
+  return b;
+}
+function badge(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const t = TYPES.find(t => t[0].test(ext));
+  const b = el('div', 'badge', t ? t[1] : (ext.slice(0, 4) || 'FILE'));
+  return b;
+}
+function ago(ts) {
+  const d = (Date.now() / 1000 - ts) / 60;
+  if (d < 1) return 'только что';
+  if (d < 60) return Math.round(d) + ' мин назад';
+  if (d < 1440) return Math.round(d / 60) + ' ч назад';
+  return new Date(ts * 1000).toLocaleDateString('ru', { day: 'numeric', month: 'short' });
+}
+function left(ts) {
+  const m = (ts - Date.now() / 1000) / 60;
+  if (m < 60) return 'ещё ' + Math.max(1, Math.round(m)) + ' мин';
+  if (m < 1440) return 'ещё ' + Math.round(m / 60) + ' ч';
+  return 'ещё ' + Math.round(m / 1440) + ' дн';
+}
+let toastT;
+// Тост поверх открытых окон: popover попадает в верхний слой, иначе модальный dialog его закрывает.
+function toast(t) {
+  const e = $('#toast'); e.textContent = t;
+  clearTimeout(toastT);
+  if (e.showPopover) { e.setAttribute('popover', 'manual'); try { e.hidePopover(); } catch {} e.hidden = false; e.showPopover(); }
+  else e.hidden = false;
+  requestAnimationFrame(() => e.classList.add('show'));
+  toastT = setTimeout(() => {
+    e.classList.remove('show');
+    setTimeout(() => { try { e.hidePopover && e.hidePopover(); } catch {} e.hidden = true; }, 200);
+  }, 1800);
+}
+// копирование с отметкой ✓ на самой кнопке
+async function copyText(text, btn, input) {
+  let ok = true;
+  try { await navigator.clipboard.writeText(text); }
+  catch { try { input.select(); ok = document.execCommand('copy'); } catch { ok = false; } }
+  if (btn) {
+    const was = btn.innerHTML; btn.innerHTML = ok ? '✓' : '✕'; btn.classList.add(ok ? 'done' : 'fail');
+    setTimeout(() => { btn.innerHTML = was; btn.classList.remove('done', 'fail'); }, 1500);
+  }
+  toast(ok ? 'Скопировано' : 'Не удалось скопировать');
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function api(method, url, body, headers, signal) {
+  const r = await fetch(url, { method, body, signal, headers: Object.assign({}, H, headers), credentials: 'same-origin' });
+  if (r.status === 401) { location.href = '/login.html'; throw new Error('auth'); }
+  return r;
+}
+const jsonHdr = { 'Content-Type': 'application/json' };
+
+// ---- загрузка ----
+// PUT куска через XHR: fetch не умеет прогресс отправки, а без него полоса прыгает по 8 МБ.
+function putChunk(url, blob, sig, onp) {
+  return new Promise((res, rej) => {
+    const x = new XMLHttpRequest();
+    x.open('PUT', url);
+    for (const k in H) x.setRequestHeader(k, H[k]);
+    // сторож: нет прогресса 30 с — соединение умерло (например, телефон засыпал), пробуем заново
+    let dog = setTimeout(function bark() { x.stalled = true; x.abort(); }, 30000);
+    const pet = () => { clearTimeout(dog); dog = setTimeout(() => { x.stalled = true; x.abort(); }, 30000); };
+    liveXHR.add(x);
+    x.onloadend = () => { clearTimeout(dog); liveXHR.delete(x); };
+    x.upload.onprogress = e => { pet(); onp(e.loaded); };
+    x.onload = () => {
+      if (x.status === 401) { location.href = '/login.html'; rej(new Error('auth')); return; }
+      let j = {}; try { j = JSON.parse(x.responseText); } catch {}
+      res({ status: x.status, ok: x.status >= 200 && x.status < 300, j });
+    };
+    x.onerror = x.ontimeout = () => rej(new Error('сеть'));
+    x.onabort = () => rej(new Error(x.stalled ? 'сеть' : 'отменено'));
+    sig.addEventListener('abort', () => x.abort(), { once: true });
+    x.send(blob);
+  });
+}
+async function upload(file) {
+  const dir = cwd;
+  const li = el('li');
+  const info = el('div', 'info');
+  const meta = el('div', 'meta', 'подготовка…');
+  const bar = el('div', 'bar'); const fill = el('i'); bar.append(fill);
+  info.append(el('div', 'name', file.name), meta, bar);
+  const ctl = new AbortController(); let id = null;
+  const stop = iconBtn('del', 'Отменить', 'del');
+  stop.onclick = () => {
+    ctl.abort(); li.remove();
+    if (id) api('DELETE', '/api/up/' + id).catch(() => {});
+  };
+  li.append(badge(file.name), info, stop); $('#queue').prepend(li);
+  const sig = ctl.signal;
+  // плавный прогресс: обновление не чаще 4 раз в секунду, скорость сглажена
+  let lastT = 0, lastB = 0, speed = 0, shown = 0;
+  const show = (sent, force) => {
+    const now = Date.now();
+    if (!force && now - lastT < 250) return;
+    if (lastT) {
+      const dt = (now - lastT) / 1000, inst = Math.max(0, sent - lastB) / dt;
+      speed = speed ? speed * 0.8 + inst * 0.2 : inst;
+    }
+    lastT = now; lastB = sent; shown = Math.max(shown, sent);
+    fill.style.width = (shown / file.size * 100).toFixed(1) + '%';
+    const left = speed > 0 ? Math.round((file.size - shown) / speed) : 0;
+    meta.textContent = `${fmt(shown)} из ${fmt(file.size)}` + (speed > 0 ? ` · ${fmt(speed)}/с` + (left > 3 ? ` · ~${left >= 60 ? Math.round(left / 60) + ' мин' : left + ' с'}` : '') : '');
+  };
+  try {
+    if (file.size > maxFile) throw new Error('больше лимита ' + fmt(maxFile));
+    let r = await api('POST', '/api/up', JSON.stringify({ name: file.name, size: file.size, dir }), jsonHdr, sig);
+    if (!r.ok) throw new Error(await r.text());
+    let offset, done; ({ offset, done, id } = await r.json());
+    meta.textContent = 'загрузка…'; show(offset, true);
+    let fails = 0;
+    while (!done) {
+      const end = Math.min(offset + CHUNK, file.size);
+      try {
+        const base = offset;
+        r = await putChunk(`/api/up/${id}?offset=${offset}`, file.slice(offset, end), sig, n => show(base + n));
+        const j = r.j;
+        if (r.ok || r.status === 409 || r.status >= 500) {
+          if (typeof j.offset === 'number') offset = j.offset;
+          done = !!j.done;
+          if (!r.ok && r.status !== 409) throw new Error('HTTP ' + r.status);
+          fails = 0;
+        } else throw Object.assign(new Error('HTTP ' + r.status), { fatal: true });
+      } catch (e) {
+        if (sig.aborted || e.fatal || ++fails > 30) throw e;
+        meta.textContent = 'нет связи, повтор…';
+        await nap(Math.min(2000 * fails, 15000));
+        if (sig.aborted) throw new Error('отменено');
+        const s = await api('POST', '/api/up', JSON.stringify({ name: file.name, size: file.size, dir }), jsonHdr, sig).catch(() => null);
+        if (s && s.ok) offset = (await s.json()).offset;
+        continue;
+      }
+      show(offset);
+    }
+    stop.remove();
+    fill.style.width = '100%';
+    meta.textContent = `готово · ${fmt(file.size)}`; meta.classList.add('okc');
+    setTimeout(() => li.remove(), 2500);
+    loadFiles();
+  } catch (e) {
+    if (sig.aborted) return;
+    meta.textContent = 'ошибка: ' + e.message;
+    meta.classList.add('err');
+    bar.remove();
+    stop.title = 'Убрать';
+  }
+}
+// Пока идёт загрузка — не даём экрану гаснуть (iOS 16.4+, Android): при блокировке телефон усыпляет страницу.
+let active = 0, wakeLock = null;
+async function keepAwake() {
+  if (!active || document.hidden || wakeLock || !('wakeLock' in navigator)) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } catch {}
+}
+function releaseAwake() { if (!active && wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
+// При возврате в приложение после блокировки: оборвать «зависшие» запросы и сразу продолжить с места остановки.
+const wakers = new Set(), liveXHR = new Set(); let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  keepAwake();
+  if (hiddenAt && Date.now() - hiddenAt > 3000) for (const x of liveXHR) { x.stalled = true; x.abort(); }
+  for (const w of [...wakers]) w();
+});
+const nap = ms => new Promise(r => { const w = () => { clearTimeout(t); wakers.delete(w); r(); }; const t = setTimeout(w, ms); wakers.add(w); });
+async function runQueue(files) {
+  // до 3 файлов параллельно — быстрее на мобильной связи
+  const q = [...files];
+  active++; keepAwake();
+  if (!('wakeLock' in navigator)) toast('Не блокируйте экран до конца загрузки');
+  const worker = async () => { while (q.length) await upload(q.shift()); };
+  try { await Promise.all([worker(), worker(), worker()]); }
+  finally { active--; releaseAwake(); }
+}
+
+// ---- списки ----
+function renderCrumbs() {
+  const nav = $('#crumbs'); nav.replaceChildren();
+  const parts = cwd ? cwd.split('/') : [];
+  const mk = (label, path) => { const b = el('button', '', label); b.onclick = () => openDir(path); return b; };
+  nav.append(mk('Мои файлы', ''));
+  parts.forEach((p, i) => { nav.append(el('span', '', '›'), mk(p, parts.slice(0, i + 1).join('/'))); });
+}
+function openDir(path) { cwd = path; loadFiles(); }
+
+async function loadFiles() {
+  const r = await api('GET', '/api/files?dir=' + encodeURIComponent(cwd));
+  if (r.status === 404 && cwd) { cwd = ''; return loadFiles(); }
+  const j = await r.json();
+  maxFile = j.max_file;
+  $('#limit').textContent = fmt(j.max_file);
+  $('#usage').replaceChildren(`${fmt(j.used)} из ${fmt(j.quota)}`, el('span', 'ttl', j.keep ? ' · ∞' : ` · ${j.ttl_days} дн.`));
+  $('#meterFill').style.width = Math.min(100, j.used / j.quota * 100).toFixed(1) + '%';
+  $('#cntFiles').textContent = j.files.length;
+  renderCrumbs();
+  curFiles = arrange(j.files);
+  const ul = $('#files'); ul.replaceChildren();
+  ul.classList.toggle('grid', gridMode);
+  $('#empty').hidden = curFiles.length > 0;
+  $('#empty').innerHTML = j.files.length ? 'Здесь нет файлов этого типа.' : 'Здесь пока пусто.<br>Загрузите первый файл.';
+  for (const f of curFiles) {
+    const li = el('li');
+    const info = el('div', 'info');
+    const acts = el('div', 'row-acts');
+    let b;
+    if (f.dir) {
+      b = el('div', 'badge folder'); b.innerHTML = FOLDER;
+      info.append(el('div', 'name', f.name), el('div', 'meta', gridMode ? `${f.count || 0} файлов` : `папка · ${f.count || 0} файлов · ${fmt(f.size)}`));
+      li.classList.add('clickable');
+      li.onclick = e => { if (!e.target.closest('.row-acts')) openDir(rel(f.name)); };
+    } else {
+      b = badge(f.name);
+      const q = cwd ? '?dir=' + encodeURIComponent(cwd) : '';
+      if (/\.(jpe?g|png|gif)$/i.test(f.name)) {
+        const tb = el('div', 'badge thumb'); const im = el('img'); im.loading = 'lazy'; im.alt = '';
+        im.src = '/api/thumb?name=' + encodeURIComponent(f.name) + (cwd ? '&dir=' + encodeURIComponent(cwd) : '') + '&v=' + f.mtime;
+        const fb = b; im.onerror = () => tb.replaceWith(fb);
+        tb.append(im); b = tb;
+      }
+      if (gridMode && VIEW.vid.test(f.name)) b.append(el('span', 'play', '▶'));
+      info.append(el('div', 'name', f.name), el('div', 'meta', gridMode ? fmt(f.size) : `${fmt(f.size)} · ${ago(f.mtime)}`));
+      if (!gridMode) {
+        const a = el('a', 'icon-btn'); a.innerHTML = ICONS.down; a.title = 'Скачать';
+        a.href = '/f/' + encodeURIComponent(f.name) + q; a.dataset.dl = f.name; a.dataset.size = f.size;
+        acts.append(a);
+      }
+      li.classList.add('clickable');
+      li.onclick = e => { if (!e.target.closest('.row-acts')) openView(f); };
+    }
+    const sh = iconBtn('share', 'Поделиться', 'acc'); sh.onclick = () => openShare(rel(f.name));
+    const mo = iconBtn('more', 'Ещё', 'more'); mo.onclick = () => openFileMenu(f);
+    if (gridMode) acts.append(mo); else acts.append(sh, mo);
+    li.append(b, info, acts); ul.append(li);
+  }
+}
+
+// ---- фильтр по типу и сортировка ----
+let fType = 'all', fSort = 'new';
+try { fType = localStorage.getItem('droply-type') || 'all'; fSort = localStorage.getItem('droply-sort') || 'new'; } catch {}
+const DOCRE = /\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|odt|ods|csv|log)$/i;
+function arrange(list) {
+  const isImg = f => VIEW.img.test(f.name), isVid = f => VIEW.vid.test(f.name);
+  let out = list.filter(f => {
+    if (fType === 'all') return true;
+    if (f.dir) return false;
+    if (fType === 'img') return isImg(f);
+    if (fType === 'vid') return isVid(f);
+    if (fType === 'doc') return DOCRE.test(f.name);
+    return !isImg(f) && !isVid(f) && !DOCRE.test(f.name);
+  });
+  const cmp = ({ new: (a, b) => b.mtime - a.mtime, old: (a, b) => a.mtime - b.mtime, name: (a, b) => a.name.localeCompare(b.name, 'ru', { numeric: true }),
+    size: (a, b) => b.size - a.size, small: (a, b) => a.size - b.size })[fSort] || ((a, b) => b.mtime - a.mtime);
+  return out.sort((a, b) => (!!b.dir - !!a.dir) || cmp(a, b)); // папки сверху
+}
+function syncFilterUI() {
+  document.querySelectorAll('#typeChips button').forEach(b => b.classList.toggle('on', b.dataset.t === fType));
+  $('#sortSel').value = fSort;
+}
+$('#typeChips').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  fType = b.dataset.t; try { localStorage.setItem('droply-type', fType); } catch {}
+  syncFilterUI(); loadFiles();
+};
+$('#sortSel').onchange = e => {
+  fSort = e.target.value;
+  try { localStorage.setItem('droply-sort', fSort); } catch {}
+  loadFiles();
+};
+syncFilterUI();
+
+// ---- вид: список / галерея ----
+let curFiles = [], gridMode = false;
+try { gridMode = localStorage.getItem('droply-grid') === '1'; } catch {}
+const setGridBtn = () => { $('#gridToggle').textContent = gridMode ? '☰' : '▦'; $('#gridToggle').title = gridMode ? 'Списком' : 'Плиткой (галерея)'; };
+setGridBtn();
+$('#gridToggle').onclick = () => {
+  gridMode = !gridMode; setGridBtn();
+  try { localStorage.setItem('droply-grid', gridMode ? '1' : '0'); } catch {}
+  loadFiles();
+};
+
+// ---- меню файла: переименовать, переместить, удалить ----
+const fm = $('#fileMenu'); let fmItem = null;
+function openFileMenu(f) {
+  fmItem = f; $('#fmName').textContent = f.name;
+  $('#fmShare').hidden = !gridMode; $('#fmDl').hidden = !gridMode || f.dir;
+  fm.showModal();
+}
+fm.addEventListener('click', e => { if (e.target === fm) fm.close(); });
+$('#fmCancel').onclick = () => fm.close();
+$('#fmShare').onclick = () => { fm.close(); openShare(rel(fmItem.name)); };
+$('#fmDl').onclick = () => {
+  fm.close();
+  const a = el('a'); a.href = '/f/' + encodeURIComponent(fmItem.name) + (cwd ? '?dir=' + encodeURIComponent(cwd) : '');
+  a.dataset.dl = fmItem.name; a.dataset.size = fmItem.size; document.body.append(a); a.click(); a.remove();
+};
+$('#fmRename').onclick = async () => {
+  fm.close();
+  const to = prompt('Новое имя', fmItem.name);
+  if (!to || to === fmItem.name) return;
+  const r = await api('POST', '/api/files/rename', JSON.stringify({ dir: cwd, name: fmItem.name, to }), jsonHdr);
+  if (!r.ok) { toast((await r.text()).trim()); return; }
+  toast('Переименовано'); loadFiles(); loadShares();
+};
+$('#fmDelete').onclick = async () => {
+  fm.close(); const f = fmItem;
+  if (!confirm(f.dir ? `Удалить папку «${f.name}» со всем содержимым?` : `Удалить «${f.name}»?`)) return;
+  await api('DELETE', '/api/files/' + encodeURIComponent(f.name) + (cwd ? '?dir=' + encodeURIComponent(cwd) : ''));
+  loadFiles(); loadShares();
+};
+const md = $('#moveDlg');
+$('#fmMove').onclick = async () => {
+  fm.close(); const f = fmItem, self = rel(f.name);
+  const tree = await (await api('GET', '/api/tree')).json();
+  const ul = $('#moveList'); ul.replaceChildren();
+  $('#moveName').textContent = 'Переместить «' + f.name + '»';
+  for (const d of [''].concat(tree.sort((a, b) => a.localeCompare(b, 'ru')))) {
+    if (d === cwd) continue; // уже здесь
+    if (f.dir && (d === self || d.startsWith(self + '/'))) continue; // в саму себя нельзя
+    const li = el('li', 'clickable');
+    const depth = d ? d.split('/').length : 0;
+    const b = el('div', 'badge folder'); b.innerHTML = FOLDER;
+    const info = el('div', 'info'); info.append(el('div', 'name', d ? d.split('/').pop() : 'Мои файлы'), el('div', 'meta', d ? '/' + d : 'корень'));
+    li.style.marginLeft = Math.min(depth, 4) * 14 + 'px';
+    li.append(b, info);
+    li.onclick = async () => {
+      const r = await api('POST', '/api/files/move', JSON.stringify({ dir: cwd, names: [f.name], to: d }), jsonHdr);
+      const j = await r.json().catch(() => ({}));
+      md.close();
+      if (!r.ok || (j.failed && j.failed.length)) { toast(j.failed ? j.failed[0] : 'Не удалось переместить'); return; }
+      toast('Перемещено в «' + (d || 'Мои файлы') + '»'); loadFiles(); loadShares();
+    };
+    ul.append(li);
+  }
+  $('#moveEmpty').hidden = ul.children.length > 0;
+  md.showModal();
+};
+$('#moveCancel').onclick = () => md.close();
+md.addEventListener('click', e => { if (e.target === md) md.close(); });
+
+$('#askFiles').onclick = () => openShare(cwd, 'in');
+
+// ---- просмотр ----
+const view = $('#view');
+const VIEW = { img: /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i, vid: /\.(mp4|m4v|mov|webm)$/i, aud: /\.(mp3|m4a|aac|wav|ogg|flac)$/i, doc: /\.(pdf|txt|md|log)$/i };
+let viewIdx = -1;
+const mediaList = () => curFiles.filter(x => !x.dir && (VIEW.img.test(x.name) || VIEW.vid.test(x.name)));
+function stepView(d) {
+  const l = mediaList(); if (l.length < 2 || viewIdx < 0) return;
+  viewIdx = (viewIdx + d + l.length) % l.length; openView(l[viewIdx], true);
+}
+function openView(f, stepping) {
+  const q = cwd ? '?dir=' + encodeURIComponent(cwd) : '';
+  viewIdx = mediaList().findIndex(x => x.name === f.name);
+  const nav = viewIdx >= 0 && mediaList().length > 1;
+  $('#viewPrev').hidden = $('#viewNext').hidden = !nav;
+  $('#viewPos').textContent = nav ? `${viewIdx + 1} / ${mediaList().length}` : '';
+  const src = '/f/' + encodeURIComponent(f.name) + (q ? q + '&' : '?') + 'inline=1';
+  if (VIEW.doc.test(f.name)) { window.open(src, '_blank'); return; }
+  const body = $('#viewBody'); body.replaceChildren();
+  let m;
+  if (VIEW.img.test(f.name)) { m = el('img'); m.alt = f.name; }
+  else if (VIEW.vid.test(f.name)) { m = el('video'); m.controls = true; m.playsInline = true; m.preload = 'metadata'; }
+  else if (VIEW.aud.test(f.name)) { m = el('audio'); m.controls = true; }
+  if (m) {
+    m.src = src;
+    m.onerror = () => body.replaceChildren(el('p', 'muted', 'Этот формат браузер не показывает — скачайте файл.'));
+    body.append(m);
+  } else body.append(el('p', 'muted', 'Предпросмотр для этого типа файлов недоступен.'));
+  $('#viewName').textContent = f.name;
+  $('#viewDl').href = '/f/' + encodeURIComponent(f.name) + q; $('#viewDl').dataset.dl = f.name; $('#viewDl').dataset.size = f.size;
+  $('#viewShare').onclick = () => { view.close(); openShare(rel(f.name)); };
+  if (!stepping) view.showModal();
+}
+$('#viewPrev').onclick = () => stepView(-1);
+$('#viewNext').onclick = () => stepView(1);
+document.addEventListener('keydown', e => { if (!view.open) return; if (e.key === 'ArrowLeft') stepView(-1); if (e.key === 'ArrowRight') stepView(1); });
+let tx = 0, ty = 0; // свайп влево/вправо — соседний файл
+$('#viewBody').addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+$('#viewBody').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) stepView(dx < 0 ? 1 : -1);
+});
+const closeView = () => { $('#viewBody').replaceChildren(); view.close(); };
+$('#viewClose').onclick = closeView;
+view.addEventListener('click', e => { if (e.target === view) closeView(); });
+view.addEventListener('close', () => $('#viewBody').replaceChildren());
+
+$('#newFolder').onclick = async () => {
+  const name = prompt('Название папки');
+  if (!name || !name.trim()) return;
+  const r = await api('POST', '/api/folders', JSON.stringify({ dir: cwd, name: name.trim() }), jsonHdr);
+  if (!r.ok) { toast(await r.text()); return; }
+  loadFiles();
+};
+
+async function loadShares() {
+  const r = await api('GET', '/api/shares');
+  const list = await r.json();
+  $('#cntShares').textContent = list.length;
+  const ul = $('#shares'); ul.replaceChildren();
+  $('#noshares').hidden = list.length > 0;
+  for (const s of list) {
+    const li = el('li');
+    const info = el('div', 'info');
+    const word = s.kind === 'in' ? 'добавлено' : 'скачано';
+    const lim = s.max ? `${word} ${s.count}/${s.max}` : `${word} ${s.count}`;
+    info.append(el('div', 'name', (s.pass ? '🔒 ' : '') + (s.kind === 'in' ? (s.shared ? '👥 Общая папка «' : '⬇ Приём в «') + (s.name || 'Мои файлы') + '»' : s.name)), el('div', 'meta', `${left(s.expires)} · ${lim}`));
+    const acts = el('div', 'row-acts');
+    const o = iconBtn('qr', 'Показать', 'acc'); o.onclick = () => showResult(s);
+    const d = iconBtn('del', 'Отозвать', 'del');
+    d.onclick = async () => { await api('DELETE', '/api/shares/' + s.token); toast('Ссылка отозвана'); loadShares(); };
+    acts.append(o, d);
+    let sb = badge(s.name);
+    if (s.dir) { sb = el('div', 'badge folder'); sb.innerHTML = FOLDER; }
+    li.append(sb, info, acts); ul.append(li);
+  }
+}
+
+// ---- вкладки ----
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+  $('#paneFiles').hidden = t.dataset.tab !== 'files';
+  $('#paneShares').hidden = t.dataset.tab !== 'shares';
+});
+
+// ---- диалог ссылки ----
+const dlg = $('#dlg');
+let curName = '', curUrl = '', curKind = '';
+document.querySelectorAll('.chips[data-name]').forEach(g => g.onclick = e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  g.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target));
+});
+const chip = name => +document.querySelector(`.chips[data-name="${name}"] .on`).dataset.v;
+function modeHint() {
+  $('#modeHint').textContent = chip('mode') === 1
+    ? 'По ссылке видно файлы папки: их можно скачать и добавить свои. Удалять может только владелец.'
+    : 'По ссылке можно только прислать файлы — содержимое папки не видно.';
+}
+document.querySelector('.chips[data-name="mode"]').addEventListener('click', () => setTimeout(modeHint));
+function openShare(name, kind) {
+  curName = name; curKind = kind || '';
+  $('#dlgName').textContent = curKind === 'in' ? 'Совместно: «' + (name ? name.split('/').pop() : 'Мои файлы') + '»' : name.split('/').pop();
+  $('#maxLbl').textContent = curKind === 'in' ? 'Сколько файлов можно добавить' : 'Скачиваний';
+  $('#modeBox').hidden = curKind !== 'in'; modeHint();
+  const mb = document.querySelectorAll('.chips[data-name="max"] button');
+  mb[1].textContent = curKind === 'in' ? '1 файл' : '1 раз'; mb[2].textContent = curKind === 'in' ? '5 файлов' : '5 раз';
+  $('#shPass').value = '';
+  $('#dlgForm').hidden = false; $('#dlgRes').hidden = true;
+  dlg.showModal();
+}
+function showResult(s) {
+  curName = s.name; curUrl = s.url;
+  $('#dlgName').textContent = s.kind === 'in' ? (s.shared ? 'Общая папка «' : 'Приём в «') + (s.name || 'Мои файлы') + '»' : s.name;
+  $('#url').value = s.url;
+  $('#qr').src = '/api/shares/' + s.token + '/qr.svg';
+  $('#share').hidden = !navigator.share;
+  $('#dlgForm').hidden = true; $('#dlgRes').hidden = false;
+  if (!dlg.open) dlg.showModal();
+}
+$('#cancel').onclick = $('#close').onclick = () => dlg.close();
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+$('#mk').onclick = async () => {
+  const r = await api('POST', '/api/shares', JSON.stringify({ name: curName, hours: chip('hours'), max: chip('max'), kind: curKind, password: $('#shPass').value, shared: chip('mode') === 1 }), jsonHdr);
+  if (!r.ok) { toast(await r.text()); return; }
+  showResult(await r.json());
+  loadShares();
+};
+$('#copy').onclick = async () => {
+  copyText(curUrl, $('#copy'), $('#url'));
+};
+$('#share').onclick = () => navigator.share({ title: curName, url: curUrl }).catch(() => {});
+
+// ---- выбор и перетаскивание ----
+const pick = $('#pick'), drop = $('#drop');
+pick.onchange = () => { runQueue([...pick.files]); pick.value = ''; };
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => runQueue([...e.dataTransfer.files]));
+// перетаскивание файла в любое место страницы
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { if (!drop.contains(e.target)) { e.preventDefault(); runQueue([...e.dataTransfer.files]); } });
+
+// ---- аккаунт ----
+const acc = $('#acc');
+let me = null;
+function accView(v) {
+  $('#accMain').hidden = v !== 'main'; $('#pwForm').hidden = v !== 'pw'; $('#usersPane').hidden = v !== 'users'; $('#invPane').hidden = v !== 'inv';
+}
+$('#me').onclick = () => { accView('main'); acc.showModal(); };
+acc.addEventListener('click', e => { if (e.target === acc) acc.close(); });
+acc.querySelectorAll('.back').forEach(b => b.onclick = () => accView('main'));
+$('#openPw').onclick = () => { $('#pwForm').reset(); accView('pw'); };
+let invUrl = '';
+$('#openInv').onclick = async () => {
+  const r = await api('GET', '/api/invite'); if (!r.ok) { toast(await r.text()); return; }
+  const j = await r.json(); invUrl = j.url;
+  $('#invQr').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(j.qr);
+  $('#invUrl').value = j.url;
+  $('#invClosed').hidden = j.open;
+  $('#invShare').hidden = !navigator.share;
+  accView('inv');
+};
+$('#invCopy').onclick = async () => {
+  copyText(invUrl, $('#invCopy'), $('#invUrl'));
+};
+$('#invShare').onclick = () => navigator.share({ title: 'Droply — регистрация', url: invUrl }).catch(() => {});
+addEyes(document);
+$('#logout').onclick = async () => { await api('POST', '/api/logout'); location.href = '/login.html'; };
+$('#pwForm').onsubmit = async e => {
+  e.preventDefault();
+  const r = await api('POST', '/api/me/password', JSON.stringify({ old: $('#pwOld').value, new: $('#pwNew').value }), jsonHdr);
+  if (!r.ok) { toast(await r.text()); return; }
+  toast('Пароль изменён'); $('#pwWeak').hidden = true; me.weak_pw = false; accView('main');
+};
+$('#openUsers').onclick = () => { $('#userForm').reset(); loadUsers(); accView('users'); };
+$('#regToggle').onchange = async e => {
+  await api('POST', '/api/settings', JSON.stringify({ registration: e.target.checked }), jsonHdr);
+  toast(e.target.checked ? 'Регистрация открыта' : 'Регистрация закрыта');
+};
+async function loadUsers() {
+  api('GET', '/api/settings').then(r => r.json()).then(j => $('#regToggle').checked = j.registration);
+  const r = await api('GET', '/api/users');
+  const list = await r.json();
+  const ul = $('#userList'); ul.replaceChildren();
+  for (const u of list) {
+    const li = el('li');
+    const b = el('div', 'badge', u.name[0]);
+    const info = el('div', 'info');
+    info.append(el('div', 'name', u.name + (u.admin ? ' · админ' : '')), el('div', 'meta', `${fmt(u.used)} из ${fmt(u.quota)} · ${u.pending ? 'не завершил регистрацию' : (u.totp ? '2FA ✓' : 'ждёт 2FA')}${u.keep ? ' · ∞' : ''}${u.max_file_mb ? ' · файл до ' + fmt(u.max_file) : ''}${u.email ? ' · ' + u.email : ''}`));
+    const edit = iconBtn('qr', 'Изменить'); edit.innerHTML = '✎';
+    edit.onclick = () => { $('#uName').value = u.name; $('#uEmail').value = u.email || ''; $('#uAdmin').checked = u.admin; $('#uKeep').checked = !!u.keep; $('#uPw').value = ''; $('#uQuota').value = ''; $('#uMaxFile').value = u.max_file_mb || ''; $('#uPw').focus(); };
+    const acts = el('div', 'row-acts'); acts.append(edit);
+    if (u.totp) {
+      const r2 = iconBtn('qr', 'Сбросить 2FA'); r2.innerHTML = '⟲';
+      r2.onclick = async () => {
+        if (!confirm(`Сбросить 2FA у ${u.name}? При следующем входе он подключит её заново.`)) return;
+        await api('POST', '/api/users/' + encodeURIComponent(u.name) + '/reset2fa'); toast('2FA сброшена'); loadUsers();
+      };
+      acts.append(r2);
+    }
+    if (u.name !== me.name) {
+      const d = iconBtn('del', 'Удалить', 'del');
+      d.onclick = async () => {
+        if (!confirm(`Удалить пользователя ${u.name} и все его файлы?`)) return;
+        const r = await api('DELETE', '/api/users/' + encodeURIComponent(u.name));
+        if (!r.ok) toast(await r.text()); else loadUsers();
+      };
+      acts.append(d);
+    }
+    li.append(b, info, acts); ul.append(li);
+  }
+}
+$('#userForm').onsubmit = async e => {
+  e.preventDefault();
+  const body = { name: $('#uName').value, password: $('#uPw').value, email: $('#uEmail').value || '-', admin: $('#uAdmin').checked, keep: $('#uKeep').checked };
+  if (+$('#uQuota').value > 0) body.quota_gb = +$('#uQuota').value;
+  body.max_file_mb = Math.max(0, Math.round(+$('#uMaxFile').value || 0));
+  const r = await api('POST', '/api/users', JSON.stringify(body), jsonHdr);
+  if (!r.ok) { toast(await r.text()); return; }
+  toast('Сохранено'); $('#userForm').reset(); loadUsers();
+};
+async function loadMe() {
+  const r = await api('GET', '/api/me');
+  me = await r.json();
+  $('#me').textContent = me.name[0];
+  $('#accName').textContent = me.name;
+  $('#openUsers').hidden = !me.admin;
+  if (me.weak_pw && !acc.open) { // старый простой пароль — просим сменить
+    $('#pwForm').reset(); $('#pwWeak').hidden = false; accView('pw'); acc.showModal();
+  }
+}
+
+// ---- подсказка «установить как приложение» ----
+const inst = $('#inst');
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
+// В установленном приложении (iOS) переход по ссылке на файл открывает его на весь экран без кнопки «назад».
+// Поэтому там: до 150 МБ — системное меню «Поделиться» (Сохранить видео / в Файлы), больше — отдельное окно Safari с кнопкой «Готово».
+document.addEventListener('click', async e => {
+  const a = e.target.closest('a[data-dl]');
+  if (!a || !standalone()) return;
+  e.preventDefault();
+  const size = +a.dataset.size || 0;
+  const canFiles = navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.txt', { type: 'text/plain' })] });
+  if (size > 150 << 20 || !canFiles) { window.open(a.href, '_blank'); return; }
+  // скачиваем, затем кнопка «Сохранить» — share() требует свежего нажатия
+  const sd = $('#saveDlg');
+  $('#saveName').textContent = a.dataset.dl; $('#saveState').textContent = 'Загрузка… 0%';
+  $('#saveGo').disabled = true; sd.showModal();
+  try {
+    const r = await fetch(a.href, { credentials: 'same-origin' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const total = +r.headers.get('content-length') || size, rd = r.body.getReader(), parts = []; let got = 0;
+    for (;;) {
+      const { done, value } = await rd.read(); if (done) break;
+      parts.push(value); got += value.length;
+      if (!sd.open) { rd.cancel(); return; }
+      $('#saveState').textContent = 'Загрузка… ' + Math.round(got / Math.max(total, 1) * 100) + '%';
+    }
+    const file = new File(parts, a.dataset.dl, { type: guessType(a.dataset.dl) });
+    $('#saveState').textContent = 'Готово · ' + fmt(file.size);
+    $('#saveGo').disabled = false;
+    $('#saveGo').onclick = async () => { try { await navigator.share({ files: [file] }); } catch {} sd.close(); };
+  } catch (err) { $('#saveState').textContent = 'Ошибка: ' + err.message; }
+});
+$('#saveCancel').onclick = () => $('#saveDlg').close();
+function guessType(n) {
+  const ext = (n.split('.').pop() || '').toLowerCase();
+  return { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', heic: 'image/heic', mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/mp4', pdf: 'application/pdf', mp3: 'audio/mpeg', m4a: 'audio/mp4' }[ext] || 'application/octet-stream';
+}
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function platform() {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'IOS';
+  if (/Android/.test(ua)) return 'Android';
+  return 'Desktop';
+}
+function showInstall() {
+  const p = platform();
+  ['IOS', 'Android', 'Desktop'].forEach(x => $('#inst' + x).hidden = x !== p);
+  $('#instGo').textContent = deferredPrompt ? 'Установить' : 'Понятно';
+  inst.showModal();
+}
+function store(k, v) { try { v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+$('#instLater').onclick = () => { store('droply.inst', 'later'); inst.close(); };
+$('#instGo').onclick = async () => {
+  store('droply.inst', 'done');
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+  inst.close();
+};
+inst.addEventListener('click', e => { if (e.target === inst) inst.close(); });
+$('#openInst').onclick = () => { acc.close(); showInstall(); };
+// подсказка об установке — только на телефонах; на ПК не всплывает (пункт в меню тоже скрыт)
+if (!standalone() && platform() !== 'Desktop' && !stored('droply.inst')) setTimeout(showInstall, 800);
+$('#openInst').hidden = standalone() || platform() === 'Desktop';
+
+loadMe();
+loadFiles();
+loadShares();
+
+// ---- push и колокольчик ----
+let myEndpoint = '', pushKeyB64 = '';
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+function u8(b64) { const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4)); return Uint8Array.from(s, c => c.charCodeAt(0)); }
+async function pushState() {
+  const b = $('#openPush'), bp = $('#bellPush');
+  if (!pushSupported()) {
+    b.hidden = !isIOS; b.textContent = 'Push: сначала установите на экран «Домой»'; bp.hidden = true; return;
+  }
+  b.hidden = false;
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  myEndpoint = sub ? sub.endpoint : '';
+  const on = !!sub && Notification.permission === 'granted';
+  b.textContent = on ? 'Push на этом устройстве: включены' : (Notification.permission === 'denied' ? 'Push запрещены в настройках телефона' : 'Включить push-уведомления');
+  bp.hidden = on || Notification.permission === 'denied';
+}
+async function pushToggle() {
+  if (!pushSupported()) { acc.close(); showInstall(); return; }
+  const reg = await navigator.serviceWorker.ready;
+  const cur = await reg.pushManager.getSubscription();
+  if (cur && Notification.permission === 'granted') {
+    if (!confirm('Выключить push-уведомления на этом устройстве?')) return;
+    await api('DELETE', '/api/push/sub', JSON.stringify({ endpoint: cur.endpoint }), jsonHdr).catch(() => {});
+    await cur.unsubscribe().catch(() => {});
+    toast('Push выключены'); pushState(); return;
+  }
+  const perm = await Notification.requestPermission(); // первым — пока жест пользователя «свежий» (iOS)
+  if (perm !== 'granted') { toast('Уведомления не разрешены'); pushState(); return; }
+  try {
+    if (!pushKeyB64) pushKeyB64 = (await (await api('GET', '/api/push/key')).json()).key;
+    const sub = cur || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8(pushKeyB64) });
+    const r = await api('POST', '/api/push/sub', JSON.stringify(sub.toJSON()), jsonHdr);
+    if (!r.ok) throw new Error(await r.text());
+    toast('Push включены — пришлю проверочное');
+  } catch (e) { toast('Не удалось включить: ' + e.message); }
+  pushState();
+}
+$('#openPush').onclick = pushToggle;
+$('#bellPush').onclick = pushToggle;
+if (pushSupported()) api('GET', '/api/push/key').then(r => r.json()).then(j => pushKeyB64 = j.key).catch(() => {});
+pushState().catch(() => {});
+
+const bellDlg = $('#bellDlg');
+async function loadEvents(render) {
+  const r = await api('GET', '/api/events'); const j = await r.json();
+  const c = $('#bellCnt'); c.hidden = !j.unread; c.textContent = j.unread > 9 ? '9+' : j.unread;
+  if (!render) return;
+  const ul = $('#bellList'); ul.replaceChildren();
+  $('#bellEmpty').hidden = j.items.length > 0;
+  for (const e of j.items) {
+    const li = el('li', e.t > j.seen ? 'new' : '');
+    li.append(el('div', 'name', e.text), el('div', 'meta', ago(e.t)));
+    ul.append(li);
+  }
+}
+$('#bell').onclick = async () => {
+  await loadEvents(true); bellDlg.showModal();
+  api('POST', '/api/events/seen').then(() => { $('#bellCnt').hidden = true; }).catch(() => {});
+};
+$('#bellClose').onclick = () => bellDlg.close();
+$('#bellClear').onclick = async () => {
+  await api('DELETE', '/api/events');
+  $('#bellList').replaceChildren(); $('#bellEmpty').hidden = false; $('#bellCnt').hidden = true;
+  toast('Уведомления очищены');
+};
+bellDlg.addEventListener('click', e => { if (e.target === bellDlg) bellDlg.close(); });
+loadEvents().catch(() => {});
+setInterval(() => { if (!document.hidden) loadEvents().catch(() => {}); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadEvents().catch(() => {}); loadFiles(); } });
+
+// Android: «Поделиться» из других приложений -> service worker кладёт файлы в кэш и открывает /?shared=1
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+if (new URLSearchParams(location.search).has('shared')) (async () => {
+  history.replaceState(null, '', '/');
+  try {
+    const c = await caches.open('droply-share');
+    const mr = await c.match('/shared-meta'); if (!mr) return;
+    const meta = await mr.json();
+    const files = [];
+    for (let i = 0; i < meta.n; i++) {
+      const fr = await c.match('/shared-file-' + i); if (!fr) continue;
+      files.push(new File([await fr.blob()], meta.names[i] || 'file', { type: fr.headers.get('content-type') || '' }));
+    }
+    await caches.delete('droply-share');
+    if (files.length) runQueue(files);
+  } catch (e) { toast('Не удалось принять файлы'); }
+})();
+
+// глазик: показать/скрыть пароль
+function addEyes(root) {
+  root.querySelectorAll('input[type=password]').forEach(inp => {
+    if (inp.dataset.eye) return;
+    inp.dataset.eye = '1';
+    const wrap = document.createElement('div'); wrap.className = 'pw-wrap';
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'eye'; b.setAttribute('aria-label', 'Показать пароль');
+    const open = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const shut = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18M10.6 5.1A10.9 10.9 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+    b.innerHTML = open;
+    b.onclick = () => { const show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; b.innerHTML = show ? shut : open; inp.focus(); };
+    wrap.appendChild(b);
+  });
+}

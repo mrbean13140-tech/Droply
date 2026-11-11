@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Droply — вход</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png?v=4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Droply">
+<meta name="theme-color" content="#f2f2f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="auth">
+  <div class="brand"><img src="/icon-192.png?v=4" alt=""><span>Droply</span></div>
+
+  <form id="fLogin" class="card" method="post" action="/login" hidden>
+    <h1>Вход</h1>
+    <input type="text" name="user" placeholder="Логин" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+    <input type="password" name="password" placeholder="Пароль" autocomplete="current-password" required>
+    <button class="primary">Войти</button>
+    <p class="alt" id="toReg" hidden>Нет аккаунта? <a href="?step=register">Зарегистрироваться</a></p>
+  </form>
+
+  <form id="fCode" class="card" method="post" action="/login/code" hidden>
+    <h1>Код подтверждения</h1>
+    <p class="muted">Введите 6 цифр из приложения-аутентификатора.</p>
+    <input type="text" name="code" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7" autocomplete="one-time-code" placeholder="000 000" class="code" required>
+    <button class="primary">Подтвердить</button>
+    <p class="alt"><a href="/login.html">Другой аккаунт</a></p>
+  </form>
+
+  <form id="fReg" class="card" method="post" action="/register" hidden>
+    <h1>Регистрация</h1>
+    <input type="text" name="user" placeholder="Логин (латиница, цифры)" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required minlength="2" maxlength="32">
+    <input type="password" name="password" placeholder="Пароль: от 8 символов, буквы и цифры" autocomplete="new-password" required minlength="8">
+    <input type="hidden" name="inv" id="inv">
+    <button class="primary">Создать аккаунт</button>
+    <p class="alt">Уже есть аккаунт? <a href="/login.html">Войти</a></p>
+  </form>
+
+  <div id="fEnroll" class="card" hidden>
+    <h1>Двухфакторная защита</h1>
+    <p class="muted">Отсканируйте QR в Google Authenticator или другом приложении для кодов, затем введите код из него.</p>
+    <img id="totpQr" class="qr" alt="QR для приложения">
+    <p class="secret"><a id="totpLink" href="#">Открыть в приложении</a> · ключ: <code id="totpSecret"></code></p>
+    <input type="text" id="enrollCode" inputmode="numeric" maxlength="7" autocomplete="one-time-code" placeholder="000 000" class="code">
+    <button id="enrollBtn" class="primary">Включить и войти</button>
+  </div>
+
+  <p id="err" class="err" hidden></p>
+</main>
+<script src="/login.js"></script>
+</body>
+</html>

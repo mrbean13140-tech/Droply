@@ -1,0 +1,1 @@
+{"ip":"10.101.101.170/24","gw":"10.101.101.1","dns":["77.88.8.8","1.1.1.1"],"iface":"eth0","listen":"127.0.0.1:8080","setup_listen":":8081","data_dir":"/data","max_file_mb":76,"quota_gb":18,"user_quota_gb":1,"ttl_days":7,"allow_countries":["RU"],"allow_hosts":[],"proxy_ips":[],"tls_listen":":8443","tls_domain":"files.incognito00009.ru"}

@@ -1,0 +1,9 @@
+droply
+landrop
+/*.tar.gz
+cloudflared
+/droply
+/landrop
+/cloudflared
+*.tar.gz
+/rootfs/

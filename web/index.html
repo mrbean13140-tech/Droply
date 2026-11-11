@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Droply</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png?v=4">
+<link rel="icon" href="/icon-192.png?v=4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Droply">
+<meta name="theme-color" content="#f2f2f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <header class="top">
+    <div class="brand"><img src="/icon-192.png?v=4" alt=""><span>Droply</span></div>
+    <div class="top-r">
+      <div class="meter" title="Занято"><div class="meter-bar"><i id="meterFill"></i></div><span id="usage"></span></div>
+      <button id="bell" class="bell" title="Уведомления" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><i id="bellCnt" hidden></i></button>
+      <button id="me" class="avatar" title="Аккаунт">?</button>
+    </div>
+  </header>
+
+  <label id="drop" class="drop">
+    <input id="pick" type="file" multiple>
+    <span class="drop-icon" aria-hidden="true">
+      <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="currentColor"/><path d="M23 36l9-9 9 9" fill="none" stroke="var(--tile)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+    <span class="big">Загрузить файлы</span>
+    <span class="hint">нажми или перетащи · до <b id="limit">76 МБ</b></span>
+  </label>
+
+  <ul id="queue" class="list"></ul>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="files" role="tab">Файлы <em id="cntFiles">0</em></button>
+    <button class="tab" data-tab="shares" role="tab">Ссылки <em id="cntShares">0</em></button>
+  </nav>
+
+  <section id="paneFiles" class="pane">
+    <div class="pathbar"><nav id="crumbs" class="crumbs"></nav><div class="pb-acts"><button id="gridToggle" class="ghost small icon-only" title="Плиткой">▦</button><button id="askFiles" class="ghost small" title="Совместная работа: общая папка или приём файлов по ссылке">Совместно</button><button id="newFolder" class="ghost small">＋ Папка</button></div></div>
+    <div class="filters"><div id="typeChips" class="chips small-chips"><button data-t="all">Все</button><button data-t="img">Фото</button><button data-t="vid">Видео</button><button data-t="doc">Документы</button><button data-t="other">Другое</button></div><label class="sort-wrap" title="Сортировка"><span aria-hidden="true">⇅</span><select id="sortSel" aria-label="Сортировка"><option value="new">Сначала новые</option><option value="old">Сначала старые</option><option value="name">По имени</option><option value="size">Сначала большие</option><option value="small">Сначала маленькие</option></select></label></div>
+    <ul id="files" class="list"></ul>
+    <p id="empty" class="empty" hidden>Здесь пока пусто.<br>Загрузите первый файл.</p>
+  </section>
+  <section id="paneShares" class="pane" hidden>
+    <ul id="shares" class="list"></ul>
+    <p id="noshares" class="empty">Активных ссылок нет.<br>Нажми «Поделиться» у файла.</p>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <h2 id="dlgName" class="dlg-title"></h2>
+  <div id="dlgForm">
+    <div id="modeBox" hidden>
+      <p class="lbl">Что можно по ссылке</p>
+      <div class="chips" data-name="mode">
+        <button data-v="1" class="on">Общая папка</button><button data-v="0">Только прислать файлы</button>
+      </div>
+      <p id="modeHint" class="muted mode-hint"></p>
+    </div>
+    <p class="lbl">Срок жизни ссылки</p>
+    <div class="chips" data-name="hours">
+      <button data-v="1">1 час</button><button data-v="24" class="on">Сутки</button><button data-v="72">3 дня</button><button data-v="168">Неделя</button>
+    </div>
+    <p class="lbl" id="maxLbl">Скачиваний</p>
+    <div class="chips" data-name="max">
+      <button data-v="0" class="on">Без лимита</button><button data-v="1">1 раз</button><button data-v="5">5 раз</button>
+    </div>
+    <p class="lbl">Пароль (необязательно)</p>
+    <input id="shPass" type="password" placeholder="Без пароля" autocomplete="new-password" maxlength="128">
+    <div class="acts"><button id="cancel" class="ghost" autofocus>Отмена</button><button id="mk" class="primary">Создать ссылку</button></div>
+  </div>
+  <div id="dlgRes" hidden>
+    <div class="qr-wrap"><img id="qr" alt="QR-код ссылки"></div>
+    <div class="url-row"><input id="url" readonly><button id="copy" class="icon-btn" title="Копировать">⧉</button></div>
+    <div class="acts"><button id="close" class="ghost" autofocus>Готово</button><button id="share" class="primary">Поделиться…</button></div>
+  </div>
+</dialog>
+<dialog id="acc">
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <h2 class="dlg-title" id="accName"></h2>
+  <div id="accMain" class="menu">
+    <button id="openInv">Пригласить</button>
+    <button id="openInst">Установить на телефон</button>
+    <button id="openPush" hidden>Push-уведомления</button>
+    <button id="openPw">Сменить пароль</button>
+    <button id="openUsers" hidden>Пользователи</button>
+    <button id="logout" class="danger">Выйти</button>
+  </div>
+  <form id="pwForm" hidden>
+    <input type="password" id="pwOld" placeholder="Текущий пароль" autocomplete="current-password" required>
+    <p id="pwWeak" class="err pw-weak" hidden>Ваш пароль слишком простой — придумайте новый, чтобы аккаунт не взломали.</p>
+    <input type="password" id="pwNew" placeholder="Новый пароль: от 8 символов, буквы и цифры" autocomplete="new-password" minlength="8" required>
+    <div class="acts"><button type="button" class="ghost back">Назад</button><button class="primary">Сохранить</button></div>
+  </form>
+  <div id="invPane" hidden>
+    <p class="muted inv-hint">Покажите QR или отправьте ссылку — по ней откроется регистрация. Ссылка одноразовая и действует сутки: для каждого человека откройте «Пригласить» заново.</p>
+    <div class="qr-wrap"><img id="invQr" class="qr" alt="QR-код приглашения"></div>
+    <p id="invClosed" class="err" hidden>Достигнут лимит пользователей — по ссылке не зарегистрироваться.</p>
+    <div class="url-row"><input id="invUrl" readonly><button id="invCopy" class="icon-btn" title="Копировать">⧉</button></div>
+    <div class="acts"><button type="button" class="ghost back">Назад</button><button id="invShare" class="primary">Поделиться…</button></div>
+  </div>
+  <div id="usersPane" hidden>
+    <label class="switch-row"><span>Регистрация без приглашения</span><input id="regToggle" type="checkbox"></label>
+    <ul id="userList" class="list compact"></ul>
+    <form id="userForm">
+      <p class="lbl">Добавить или изменить</p>
+      <input id="uName" placeholder="Логин (латиница)" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      <input id="uPw" type="password" placeholder="Пароль (пусто — не менять; от 8 символов, буквы и цифры)" autocomplete="new-password">
+      <input id="uEmail" type="email" placeholder="E-mail для входа через Cloudflare (необязательно)">
+      <div class="row2"><input id="uQuota" type="number" min="0" step="0.5" placeholder="Квота, ГБ (по умолчанию)"><label class="chk"><input id="uAdmin" type="checkbox"> админ</label></div>
+      <input id="uMaxFile" type="number" min="0" step="1" placeholder="Лимит одного файла, МБ (пусто — общий 76)">
+      <label class="chk"><input id="uKeep" type="checkbox"> хранить файлы бессрочно</label>
+      <div class="acts"><button type="button" class="ghost back">Назад</button><button class="primary">Сохранить</button></div>
+    </form>
+  </div>
+</dialog>
+<dialog id="inst">
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <div class="inst-head"><img src="/icon-192.png?v=4" alt=""><div><h2 class="dlg-title">Droply на экране «Домой»</h2><p class="muted">Открывается как приложение — без браузера и адресной строки.</p></div></div>
+  <ol id="instIOS" class="steps" hidden>
+    <li><span>Откройте сайт в <b>Safari</b></span></li>
+    <li><span>Нажмите <b>«Поделиться»</b> <span class="ico">⬆︎</span> внизу экрана</span></li>
+    <li><span>Выберите <b>«На экран „Домой“»</b></span></li>
+    <li><span>Нажмите <b>«Добавить»</b></span></li>
+  </ol>
+  <ol id="instAndroid" class="steps" hidden>
+    <li><span>Откройте сайт в <b>Chrome</b></span></li>
+    <li><span>Нажмите <b>⋮</b> справа вверху</span></li>
+    <li><span>Выберите <b>«Установить приложение»</b> или «Добавить на гл. экран»</span></li>
+  </ol>
+  <ol id="instDesktop" class="steps" hidden>
+    <li><span>В Chrome или Edge нажмите значок установки <span class="ico">⊕</span> в адресной строке</span></li>
+    <li><span>Подтвердите <b>«Установить»</b></span></li>
+  </ol>
+  <div class="acts"><button id="instLater" class="ghost">Позже</button><button id="instGo" class="primary">Понятно</button></div>
+</dialog>
+<dialog id="view" class="viewer">
+  <div class="view-top"><span id="viewName" class="dlg-title"></span><button id="viewClose" class="icon-btn" title="Закрыть">✕</button></div>
+  <div class="view-wrap"><div id="viewBody" class="view-body"></div>
+    <button id="viewPrev" class="view-nav prev" title="Предыдущий" hidden>‹</button><button id="viewNext" class="view-nav next" title="Следующий" hidden>›</button></div>
+  <p id="viewPos" class="muted view-pos"></p>
+  <div class="acts"><a id="viewDl" class="btn ghost-a">Скачать</a><button id="viewShare" class="primary">Поделиться</button></div>
+</dialog>
+<dialog id="fileMenu">
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <h2 id="fmName" class="dlg-title"></h2>
+  <div class="menu">
+    <button id="fmShare" hidden>Поделиться</button>
+    <button id="fmDl" hidden>Скачать</button>
+    <button id="fmRename">Переименовать</button>
+    <button id="fmMove">Переместить в папку…</button>
+    <button id="fmDelete" class="danger">Удалить</button>
+  </div>
+  <div class="acts"><button id="fmCancel" class="ghost" autofocus>Отмена</button></div>
+</dialog>
+<dialog id="moveDlg">
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <h2 id="moveName" class="dlg-title"></h2>
+  <ul id="moveList" class="list compact move-list"></ul>
+  <p id="moveEmpty" class="empty" hidden>Других папок нет — создайте папку кнопкой «＋ Папка».</p>
+  <div class="acts"><button id="moveCancel" class="ghost" autofocus>Отмена</button></div>
+</dialog>
+<dialog id="bellDlg">
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <h2 class="dlg-title">Уведомления</h2>
+  <ul id="bellList" class="list compact bell-list"></ul>
+  <p id="bellEmpty" class="empty" hidden>Пока ничего нового.</p>
+  <div class="acts"><button id="bellClear" class="ghost">Очистить</button><button id="bellPush" class="ghost" hidden>Включить push</button><button id="bellClose" class="primary" autofocus>Закрыть</button></div>
+</dialog>
+<dialog id="saveDlg">
+  <h2 id="saveName" class="dlg-title"></h2>
+  <p id="saveState" class="muted"></p>
+  <p class="muted save-hint">Дальше — «Сохранить видео/изображение» или «Сохранить в Файлы».</p>
+  <div class="acts"><button id="saveCancel" class="ghost">Отмена</button><button id="saveGo" class="primary" disabled>Сохранить…</button></div>
+</dialog>
+<div id="toast" class="toast" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>
