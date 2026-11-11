@@ -24,9 +24,9 @@
     </div>
   </header>
   <section class="stor">
-    <div class="stor-row"><b id="stUsed">…</b><span id="stOf"></span></div>
+    <div class="stor-big"><b id="stUsed">…</b><span id="stOf"></span></div>
     <div class="seg"><i id="segImg" class="c1"></i><i id="segVid" class="c2"></i><i id="segOth" class="c3"></i></div>
-    <div class="leg"><span><em class="c1"></em>Фото <b id="lgImg"></b></span><span><em class="c2"></em>Видео <b id="lgVid"></b></span><span><em class="c3"></em>Другое <b id="lgOth"></b></span></div>
+    <div class="leg"><span><b id="lgImg"></b>фото</span><span><b id="lgVid"></b>видео</span><span><b id="lgOth"></b>другое</span><span id="stKeep" class="keep"></span></div>
   </section>
   <input id="pick" type="file" multiple hidden>
   <ul id="queue" class="list"></ul>
@@ -36,7 +36,7 @@
       <label class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Поиск файлов" autocomplete="off" enterkeyhint="search"></label>
       <label class="sq" title="Сортировка"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg><select id="sortSel" aria-label="Сортировка"><option value="new">Сначала новые</option><option value="old">Сначала старые</option><option value="name">По имени</option><option value="size">Сначала большие</option><option value="small">Сначала маленькие</option></select></label>
     </div>
-    <div id="typeChips" class="chips small-chips"><button data-t="all">Все</button><button data-t="img">Фото</button><button data-t="vid">Видео</button><button data-t="doc">Документы</button><button data-t="other">Другое</button></div>
+    <div id="typeChips" class="utabs"><button data-t="all">Обзор</button><button data-t="img">Фото</button><button data-t="vid">Видео</button><button data-t="doc">Документы</button><button data-t="dir">Папки</button></div>
     <div class="pathbar"><nav id="crumbs" class="crumbs"></nav></div>
     <div id="fileView"></div>
     <p id="empty" class="empty" hidden>Здесь пока пусто.<br>Нажмите ＋, чтобы загрузить файлы.</p>
@@ -48,9 +48,11 @@
   </section>
 </main>
 <nav class="dock" role="tablist">
-  <button class="tab active" data-tab="files" role="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Файлы<em id="cntFiles" hidden></em></button>
+  <button class="tab active" data-tab="files" role="tab" title="Файлы" aria-label="Файлы"><svg class="ic" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z"/></svg><em id="cntFiles" hidden></em></button>
+  <button id="dockSearch" class="dbtn" title="Поиск" aria-label="Поиск"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
   <button id="fab" class="fab" title="Добавить" aria-label="Добавить"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-  <button class="tab" data-tab="shares" role="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Ссылки</button>
+  <button class="tab" data-tab="shares" role="tab" title="Ссылки" aria-label="Ссылки"><svg class="ic" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></button>
+  <button id="dockMe" class="dbtn" title="Аккаунт" aria-label="Аккаунт"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg></button>
 </nav>
 <dialog id="addDlg">
   <div class="sheet-grip" aria-hidden="true"></div>

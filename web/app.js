@@ -59,6 +59,13 @@ function iconBtn(icon, title, cls) {
   return b;
 }
 const KIND = { IMG: 'img', VID: 'vid', AUD: 'aud', PDF: 'doc', DOC: 'doc', XLS: 'sheet', PPT: 'slides', ZIP: 'zip', APP: 'app' };
+function docIcon(name) {
+  const ext = (name.includes('.') ? name.split('.').pop() : '').toUpperCase().slice(0, 4);
+  const b = el('div', 'dic');
+  b.innerHTML = '<svg viewBox="0 0 34 40"><path class="pg" d="M5.5 1.5h15.2l9.3 9.3V36a2.5 2.5 0 0 1-2.5 2.5H5.5A2.5 2.5 0 0 1 3 36V4a2.5 2.5 0 0 1 2.5-2.5z"/><path class="fold" d="M20.7 1.5V8a2.8 2.8 0 0 0 2.8 2.8H30"/></svg>';
+  b.append(el('em', '', ext || 'FILE'));
+  return b;
+}
 function badge(name) {
   const ext = (name.split('.').pop() || '').toLowerCase();
   const t = TYPES.find(t => t[0].test(ext));
@@ -249,8 +256,10 @@ function hello(name) {
   $('#hello').textContent = g + (name ? ', ' + name : '');
 }
 function storage(j) {
-  $('#stUsed').textContent = fmt(j.used);
-  $('#stOf').textContent = 'из ' + fmt(j.quota) + (j.keep ? ' · хранится бессрочно' : ' · хранится ' + j.ttl_days + ' дн.');
+  const [num, unit] = fmt(j.used).split(' ');
+  $('#stUsed').textContent = num.replace('.', ',');
+  $('#stOf').textContent = unit + ' из ' + fmt(j.quota).replace('.0 ', ' ');
+  $('#stKeep').textContent = j.keep ? 'бессрочно' : j.ttl_days + ' дн.';
   const k = j.by_kind || {}, pc = v => Math.min(100, (v || 0) / j.quota * 100).toFixed(2) + '%';
   $('#segImg').style.width = pc(k.img); $('#segVid').style.width = pc(k.vid); $('#segOth').style.width = pc(k.other);
   $('#lgImg').textContent = fmt(k.img || 0); $('#lgVid').textContent = fmt(k.vid || 0); $('#lgOth').textContent = fmt(k.other || 0);
@@ -272,7 +281,7 @@ function secHead(title, note) {
 function thumbURL(f, dir) { return '/api/thumb?name=' + encodeURIComponent(f.name) + (dir ? '&dir=' + encodeURIComponent(dir) : '') + '&v=' + f.mtime; }
 function fileRow(f, dir, onOpen) {
   const li = el('li', 'clickable');
-  const b = f.dir ? (() => { const x = el('div', 'badge fi'); x.innerHTML = FI.folder; return x; })() : badge(f.name);
+  const b = f.dir ? (() => { const x = el('div', 'badge fi fold'); x.innerHTML = FI.folder; return x; })() : (isMedia(f) ? badge(f.name) : docIcon(f.name));
   const info = el('div', 'info');
   const meta = f.dir ? `${f.count || 0} ${plural(f.count || 0, 'файл', 'файла', 'файлов')} · ${fmt(f.size)}` : `${fmt(f.size)} · ${ago(f.mtime)}`;
   info.append(el('div', 'name', f.name), el('div', 'meta', (dir !== undefined && dir !== cwd ? '/' + (dir || 'Мои файлы') + ' · ' : '') + meta));
@@ -300,8 +309,29 @@ function mediaTile(f) {
   t.onclick = () => openView(f);
   return t;
 }
+let recentList = [];
+function recentCard(h) {
+  const c = el('div', 'rc clickable');
+  const p = el('div', 'p');
+  const f = { name: h.name, size: h.size, mtime: h.mtime, dur: h.dur };
+  if (/\.(jpe?g|png|gif)$/i.test(h.name)) {
+    const im = el('img'); im.loading = 'lazy'; im.alt = ''; im.src = thumbURL(f, h.dir);
+    im.onerror = () => { im.remove(); p.classList.add('noimg'); p.innerHTML = FI.img; };
+    p.append(im);
+  } else if (isMedia(f)) { p.classList.add('noimg'); p.innerHTML = VIEW.vid.test(h.name) ? FI.vid : FI.img; }
+  else { p.classList.add('noimg', 'docp'); p.append(docIcon(h.name)); }
+  if (VIEW.vid.test(h.name)) p.append(el('span', 'dur', h.dur ? dur(h.dur) : '▶'));
+  if (h.shared) { const s = el('span', 'tlk'); s.innerHTML = FI.link; p.append(s); }
+  c.append(p, el('div', 'n', h.name), el('div', 'm', fmt(h.size) + ' · ' + ago(h.mtime)));
+  c.onclick = () => { if (h.dir === cwd) { const x = curFiles.find(y => y.name === h.name); if (x) return isMedia(x) || VIEW.doc.test(x.name) ? openView(x) : openFileMenu(x); } pendingOpen = h.name; openDir(h.dir); };
+  return c;
+}
 function renderFiles(list) {
   const root = $('#fileView'); root.replaceChildren();
+  if (!cwd && fType === 'all' && recentList.length > 2) {
+    root.append(secHead('Недавние'));
+    const strip = el('div', 'recent'); recentList.forEach(h => strip.append(recentCard(h))); root.append(strip);
+  }
   const folders = list.filter(f => f.dir), media = list.filter(isMedia), docs = list.filter(f => !f.dir && !isMedia(f));
   if (folders.length) {
     root.append(secHead('Папки', folders.length + ''));
@@ -316,20 +346,21 @@ function renderFiles(list) {
       groups[groups.length - 1][1].push(f);
     }
     for (const [g, fs] of groups) {
-      root.append(secHead(g, fs.length + ' ' + plural(fs.length, 'файл', 'файла', 'файлов')));
+      root.append(secHead(byDate ? g : (fType === 'vid' ? 'Видео' : fType === 'img' ? 'Фото' : 'Фото и видео'), fs.length + ''));
       const grid = el('div', 'tiles'); fs.forEach(f => grid.append(mediaTile(f))); root.append(grid);
     }
   }
   if (docs.length) {
-    root.append(secHead(media.length || folders.length ? 'Документы и другое' : 'Файлы', docs.length + ''));
+    root.append(secHead('Документы', docs.length + ''));
     const ul = el('ul', 'list card'); docs.forEach(f => ul.append(fileRow(f, undefined, () => openView(f)))); root.append(ul);
   }
 }
 let curFiles = [], gridMode = false;
 async function loadFiles() {
   if (searching()) return runSearch();
-  const r = await api('GET', '/api/files?dir=' + encodeURIComponent(cwd));
+  const [r, rr] = await Promise.all([api('GET', '/api/files?dir=' + encodeURIComponent(cwd)), !cwd ? api('GET', '/api/recent').catch(() => null) : null]);
   if (r.status === 404 && cwd) { cwd = ''; return loadFiles(); }
+  if (rr && rr.ok) recentList = await rr.json();
   const j = await r.json();
   maxFile = j.max_file;
   $('#limit').textContent = fmt(j.max_file);
@@ -369,17 +400,17 @@ $('#q').addEventListener('input', () => { clearTimeout(sT); sT = setTimeout(load
 
 // ---- фильтр по типу и сортировка ----
 let fType = 'all', fSort = 'new';
-try { fType = localStorage.getItem('droply-type') || 'all'; fSort = localStorage.getItem('droply-sort') || 'new'; } catch {}
+try { fType = localStorage.getItem('droply-type') || 'all'; if (fType === 'other') fType = 'doc'; fSort = localStorage.getItem('droply-sort') || 'new'; } catch {}
 const DOCRE = /\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|odt|ods|csv|log)$/i;
 function arrange(list) {
   const isImg = f => VIEW.img.test(f.name), isVid = f => VIEW.vid.test(f.name);
   let out = list.filter(f => {
     if (fType === 'all') return true;
+    if (fType === 'dir') return !!f.dir;
     if (f.dir) return false;
     if (fType === 'img') return isImg(f);
     if (fType === 'vid') return isVid(f);
-    if (fType === 'doc') return DOCRE.test(f.name);
-    return !isImg(f) && !isVid(f) && !DOCRE.test(f.name);
+    return !isImg(f) && !isVid(f); // документы и всё остальное
   });
   const cmp = ({ new: (a, b) => b.mtime - a.mtime, old: (a, b) => a.mtime - b.mtime, name: (a, b) => a.name.localeCompare(b.name, 'ru', { numeric: true }),
     size: (a, b) => b.size - a.size, small: (a, b) => a.size - b.size })[fSort] || ((a, b) => b.mtime - a.mtime);
@@ -607,6 +638,8 @@ $('#fab').onclick = () => addDlg.showModal();
 $('#addCancel').onclick = () => addDlg.close();
 addDlg.addEventListener('click', e => { if (e.target === addDlg) addDlg.close(); });
 $('#addUpload').onclick = () => { addDlg.close(); pick.click(); };
+$('#dockSearch').onclick = () => { document.querySelector('.dock .tab[data-tab="files"]').click(); const q = $('#q'); q.focus(); q.scrollIntoView({ block: 'center' }); };
+$('#dockMe').onclick = () => $('#me').click();
 
 // ---- аккаунт ----
 const acc = $('#acc');

@@ -228,3 +228,40 @@ func (s *srv) search(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(out, func(a, b int) bool { return out[a].MTime > out[b].MTime })
 	writeJSON(w, out)
 }
+
+// GET /api/recent — последние 12 файлов из всех папок (для «Недавних»)
+func (s *srv) recent(w http.ResponseWriter, r *http.Request) {
+	u := userOf(r).Name
+	root := s.userFiles(u)
+	shared := s.sharedNames(u)
+	var all []searchHit
+	filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		i, e := d.Info()
+		if e != nil || !i.Mode().IsRegular() {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, filepath.Dir(p))
+		if rel == "." {
+			rel = ""
+		}
+		all = append(all, searchHit{Name: d.Name(), Dir: filepath.ToSlash(rel), Size: i.Size(), MTime: i.ModTime().Unix()})
+		return nil
+	})
+	sort.Slice(all, func(a, b int) bool { return all[a].MTime > all[b].MTime })
+	if len(all) > 12 {
+		all = all[:12]
+	}
+	out := make([]map[string]any, 0, len(all))
+	for _, h := range all {
+		p := filepath.Join(root, filepath.FromSlash(joinRel(h.Dir, h.Name)))
+		var dur float64
+		if st, err := os.Stat(p); err == nil {
+			dur = videoDuration(p, st)
+		}
+		out = append(out, map[string]any{"name": h.Name, "dir": h.Dir, "size": h.Size, "mtime": h.MTime, "dur": dur, "shared": shared[joinRel(h.Dir, h.Name)]})
+	}
+	writeJSON(w, out)
+}

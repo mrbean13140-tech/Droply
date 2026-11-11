@@ -92,6 +92,7 @@ func serve(cfg *Config) {
 	mux.HandleFunc("POST /api/files/move", s.auth(s.csrf(s.moveFiles)))
 	mux.HandleFunc("GET /api/tree", s.auth(s.folderTree))
 	mux.HandleFunc("GET /api/search", s.auth(s.search))
+	mux.HandleFunc("GET /api/recent", s.auth(s.recent))
 	mux.HandleFunc("GET /api/push/key", s.auth(s.pushKey))
 	mux.HandleFunc("POST /api/push/sub", s.auth(s.csrf(s.pushSubscribe)))
 	mux.HandleFunc("DELETE /api/push/sub", s.auth(s.csrf(s.pushUnsubscribe)))
