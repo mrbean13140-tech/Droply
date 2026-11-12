@@ -297,7 +297,10 @@ function fileRow(f, dir, onOpen) {
   const acts = el('div', 'row-acts');
   const sh = iconBtn('share', 'Поделиться', 'share'); sh.onclick = e => { e.stopPropagation(); openShare(dir !== undefined ? (dir ? dir + '/' : '') + f.name : rel(f.name)); };
   const mo = iconBtn('more', 'Ещё', 'more'); mo.onclick = e => { e.stopPropagation(); openFileMenu(f); };
-  acts.append(sh, mo);
+  acts.append(sh);
+  if (!f.dir) { const d = el('button', 'icon-btn share'); d.innerHTML = '<svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>'; d.title = 'Скачать'; d.setAttribute('aria-label', 'Скачать');
+    d.onclick = e => { e.stopPropagation(); dlFile(f.name, dir !== undefined ? dir : cwd, f.size); }; acts.append(d); }
+  acts.append(mo);
   if (f.dir) { const c = el('span', 'chev'); c.innerHTML = FI.chev; acts.append(c); }
   li.onclick = e => { if (!e.target.closest('.row-acts .icon-btn')) onOpen(); };
   li.append(b, info, acts);
@@ -469,17 +472,14 @@ syncFilterUI();
 const fm = $('#fileMenu'); let fmItem = null;
 function openFileMenu(f) {
   fmItem = f; $('#fmName').textContent = f.name;
-  $('#fmShare').hidden = false; $('#fmDl').hidden = !!f.dir;
   fm.showModal();
 }
 fm.addEventListener('click', e => { if (e.target === fm) fm.close(); });
 $('#fmCancel').onclick = () => fm.close();
-$('#fmShare').onclick = () => { fm.close(); openShare(rel(fmItem.name)); };
-$('#fmDl').onclick = () => {
-  fm.close();
-  const a = el('a'); a.href = '/f/' + encodeURIComponent(fmItem.name) + (cwd ? '?dir=' + encodeURIComponent(cwd) : '');
-  a.dataset.dl = fmItem.name; a.dataset.size = fmItem.size; document.body.append(a); a.click(); a.remove();
-};
+function dlFile(name, dir, size) {
+  const a = el('a'); a.href = '/f/' + encodeURIComponent(name) + (dir ? '?dir=' + encodeURIComponent(dir) : '');
+  a.dataset.dl = name; a.dataset.size = size; document.body.append(a); a.click(); a.remove();
+}
 $('#fmRename').onclick = async () => {
   fm.close();
   const to = prompt('Новое имя', fmItem.name);

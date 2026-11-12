@@ -306,7 +306,7 @@ button:active,.clickable:active,.t:active,.rc:active,a.icon-btn:active{transform
 .dic .pg{fill:var(--s2);stroke:var(--hair);stroke-width:1}
 .dic .fold{fill:none;stroke:var(--hair);stroke-width:1}
 .dic em{position:absolute;left:0;right:0;bottom:7px;text-align:center;font:700 7.5px/1 sans-serif;font-family:inherit;font-style:normal;letter-spacing:.05em;color:var(--fg2)}
-.row-acts{gap:2px;align-items:center}
+.row-acts{gap:6px;align-items:center}
 .row-acts .chev{color:var(--muted);display:grid;place-items:center}
 .row-acts .chev .ic{width:16px;height:16px}
 .icon-btn{width:34px;height:34px;border-radius:9px;border:0;background:none;color:var(--muted)}
