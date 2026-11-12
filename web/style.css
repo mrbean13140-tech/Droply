@@ -383,3 +383,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
 .rlist .rth>.ic{width:20px;height:20px}
 .rlist .rth .dic{transform:scale(.8)}
 .bell i{background:#fff}
+/* фильтры — снова кнопками-пилюлями */
+.utabs{gap:6px;border-bottom:0;margin:12px 0 0;padding-bottom:2px}
+.utabs button{padding:8px 13px;border-radius:999px;background:var(--s2);color:var(--fg2);font-size:14px;border:1px solid transparent}
+.utabs button:hover{color:var(--fg);background:var(--s3)}
+.utabs button.on{background:var(--fg);color:var(--bg)}
+.utabs button.on::after{display:none}
+.utabs button:active{transform:scale(.96)}

@@ -336,7 +336,7 @@ function recentCard(h) {
 }
 function renderFiles(list) {
   const root = $('#fileView'); root.replaceChildren();
-  if (!cwd && fType === 'all' && recentList.length > 2) {
+  if (false) { // «Недавние» скрыты по просьбе владельца
     const hd = secHead('Недавние'), vw = el('div', 'rview');
     [['tile', '<svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>', 'Плитка'],
      ['list', '<svg class="ic" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".8"/><circle cx="4" cy="12" r=".8"/><circle cx="4" cy="18" r=".8"/></svg>', 'Список']].forEach(([k, ic, t]) => {
@@ -374,7 +374,7 @@ function renderFiles(list) {
 let curFiles = [], gridMode = false;
 async function loadFiles() {
   if (searching()) return runSearch();
-  const [r, rr] = await Promise.all([api('GET', '/api/files?dir=' + encodeURIComponent(cwd)), !cwd ? api('GET', '/api/recent').catch(() => null) : null]);
+  const [r, rr] = [await api('GET', '/api/files?dir=' + encodeURIComponent(cwd)), null];
   if (r.status === 404 && cwd) { cwd = ''; return loadFiles(); }
   if (rr && rr.ok) recentList = await rr.json();
   const j = await r.json();
