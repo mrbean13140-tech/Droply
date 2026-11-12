@@ -390,3 +390,11 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
 .utabs button.on{background:var(--fg);color:var(--bg)}
 .utabs button.on::after{display:none}
 .utabs button:active{transform:scale(.96)}
+/* все фильтры в одну строку */
+.utabs{gap:5px;overflow:visible}
+.utabs button{flex:1 1 auto;padding:8px 6px;font-size:13.5px;text-align:center}
+@media (max-width:350px){.utabs button{font-size:12.5px;padding:7px 4px}}
+/* назад из папки */
+.crumbs{align-items:center}
+.crumbs .back{width:34px;height:34px;padding:0;margin-right:6px;border-radius:999px;background:var(--s2);color:var(--fg);display:grid;place-items:center;flex:none}
+.crumbs .back .ic{width:18px;height:18px;stroke-width:2}

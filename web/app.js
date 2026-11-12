@@ -245,10 +245,18 @@ function renderCrumbs() {
   const nav = $('#crumbs'); nav.replaceChildren();
   const parts = cwd ? cwd.split('/') : [];
   const mk = (label, path) => { const b = el('button', '', label); b.onclick = () => openDir(path); return b; };
+  if (cwd) { const b = el('button', 'back'); b.innerHTML = '<svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>'; b.title = 'Назад'; b.setAttribute('aria-label', 'Назад'); b.onclick = goUp; nav.append(b); }
   nav.append(mk('Мои файлы', ''));
   parts.forEach((p, i) => { nav.append(el('span', '', '›'), mk(p, parts.slice(0, i + 1).join('/'))); });
 }
-function openDir(path) { cwd = path; loadFiles(); }
+function openDir(path, fromPop) {
+  if (!fromPop && path !== cwd) { try { history.pushState({ dir: path }, ''); } catch (e) {} }
+  cwd = path; loadFiles();
+}
+try { history.replaceState({ dir: '' }, ''); } catch (e) {}
+// «назад» жестом/кнопкой браузера — на уровень вверх по папкам
+addEventListener('popstate', e => { const d = e.state && typeof e.state.dir === 'string' ? e.state.dir : ''; if (d !== cwd) openDir(d, true); });
+function goUp() { if (!cwd) return; const up = cwd.includes('/') ? cwd.slice(0, cwd.lastIndexOf('/')) : ''; if (history.state && history.state.dir === cwd && history.length > 1) history.back(); else openDir(up); }
 
 function hello(name) {
   const h = new Date().getHours();
