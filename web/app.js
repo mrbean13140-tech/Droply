@@ -356,6 +356,14 @@ function renderFiles(list) {
     if (recentView === 'list') { const ul = el('ul', 'list card rlist'); recentList.slice(0, 6).forEach(h => ul.append(recentRow(h))); root.append(ul); }
     else { const strip = el('div', 'recent'); recentList.forEach(h => strip.append(recentCard(h))); root.append(strip); }
   }
+  if (cwd) { // «..» как в проводнике — на уровень вверх
+    const up = cwd.includes('/') ? cwd.slice(0, cwd.lastIndexOf('/')) : '';
+    const li = el('li', 'clickable updir'), b = el('div', 'badge fi fold');
+    b.innerHTML = '<svg class="ic" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 16.5v-6M9.2 13.2 12 10.4l2.8 2.8"/></svg>';
+    const info = el('div', 'info'); info.append(el('div', 'name', '..'), el('div', 'meta', 'Назад · ' + (up ? up.split('/').pop() : 'Мои файлы')));
+    li.append(b, info); li.onclick = goUp;
+    const ul = el('ul', 'list card'); ul.append(li); root.append(ul);
+  }
   const folders = list.filter(f => f.dir), media = list.filter(isMedia), docs = list.filter(f => !f.dir && !isMedia(f));
   if (folders.length) {
     root.append(secHead('Папки', folders.length + ''));
@@ -394,7 +402,7 @@ async function loadFiles() {
   curFiles = arrange(j.files);
   renderFiles(curFiles);
   if (pendingOpen) { const f = curFiles.find(x => x.name === pendingOpen); pendingOpen = null; if (f) (isMedia(f) || VIEW.doc.test(f.name) ? openView(f) : openFileMenu(f)); }
-  $('#empty').hidden = curFiles.length > 0;
+  $('#empty').hidden = curFiles.length > 0 || !!cwd;
   $('#empty').innerHTML = j.files.length ? 'Здесь нет файлов этого типа.' : 'Здесь пока пусто.<br>Нажмите ＋, чтобы загрузить файлы.';
 }
 
