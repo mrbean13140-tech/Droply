@@ -434,3 +434,6 @@ main{padding-bottom:calc(130px + env(safe-area-inset-bottom))}
 }
 @media (min-width:1200px){main,.dock{zoom:1.1}}
 @media (min-width:1700px){main,.dock{zoom:1.22}}
+html,body{overflow-x:hidden;max-width:100%;overscroll-behavior-x:none}
+main{overflow-x:clip}
+.utabs button{min-width:0}
