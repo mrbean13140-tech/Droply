@@ -408,3 +408,29 @@ main{padding-bottom:calc(130px + env(safe-area-inset-bottom))}
 #viewBtn{border:0;cursor:pointer;padding:0}
 .list.card .rth{width:40px;height:40px;flex:none;border-radius:10px;overflow:hidden;background:var(--s2)}
 .list.card .rth img{width:100%;height:100%;object-fit:cover;display:block}
+/* ПК: шире, больше колонок, ховеры */
+@media (min-width:900px){
+  main{max-width:1120px;padding:calc(28px + env(safe-area-inset-top)) 40px calc(130px + env(safe-area-inset-bottom))}
+  .title{font-size:34px}
+  .stor{margin:28px 0 26px}
+  .stor-big b{font-size:52px}
+  .sbar{max-width:none}
+  .utabs{justify-content:flex-start}
+  .utabs button{flex:0 0 auto;padding:9px 18px;font-size:14px}
+  .tiles{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;border-radius:14px}
+  .t{border-radius:10px}
+  .list.card li{padding:12px 10px;margin:0 -10px;border-radius:12px}
+  .list.card li.clickable:hover{background:var(--s1)}
+  .list.card li.clickable:active{opacity:1}
+  .row-acts .icon-btn.share{opacity:.75}
+  .list.card li:hover .row-acts .icon-btn.share{opacity:1}
+  .info .name{font-size:15px}
+  .dock{bottom:calc(22px + env(safe-area-inset-bottom))}
+}
+@media (min-width:1500px){
+  main{max-width:1320px}
+  html{font-size:17px}
+  .tiles{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+}
+@media (min-width:1200px){main,.dock{zoom:1.1}}
+@media (min-width:1700px){main,.dock{zoom:1.22}}
