@@ -295,8 +295,9 @@ function fileRow(f, dir, onOpen) {
   info.append(el('div', 'name', f.name), el('div', 'meta', (dir !== undefined && dir !== cwd ? '/' + (dir || 'Мои файлы') + ' · ' : '') + meta));
   if (f.shared) { const s = el('span', 'lk'); s.innerHTML = FI.link; s.title = 'Есть ссылка'; info.firstChild.append(s); }
   const acts = el('div', 'row-acts');
+  const sh = iconBtn('share', 'Поделиться', 'share'); sh.onclick = e => { e.stopPropagation(); openShare(dir !== undefined ? (dir ? dir + '/' : '') + f.name : rel(f.name)); };
   const mo = iconBtn('more', 'Ещё', 'more'); mo.onclick = e => { e.stopPropagation(); openFileMenu(f); };
-  acts.append(mo);
+  acts.append(sh, mo);
   if (f.dir) { const c = el('span', 'chev'); c.innerHTML = FI.chev; acts.append(c); }
   li.onclick = e => { if (!e.target.closest('.row-acts .icon-btn')) onOpen(); };
   li.append(b, info, acts);

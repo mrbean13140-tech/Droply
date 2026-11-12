@@ -401,3 +401,6 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
 .updir{margin-top:6px}
 .updir .name{font-size:17px;letter-spacing:.1em}
 #fileView>.list.card:first-child{margin-top:8px}
+.row-acts .icon-btn.share{color:var(--fg2);background:var(--s2);border-radius:999px}
+.row-acts .icon-btn.share:hover{color:var(--fg);background:var(--s3)}
+.row-acts .icon-btn.share svg{width:17px;height:17px}
