@@ -370,7 +370,7 @@ function renderFiles(list) {
   if (folders.length) {
     root.append(secHead('Папки', folders.length + ''));
     const ul = el('ul', 'list card'); if (cwd) ul.append(upRow()); folders.forEach(f => ul.append(fileRow(f, undefined, () => openDir(rel(f.name))))); root.append(ul);
-  } else if (cwd) { root.append(secHead('Папки')); const ul = el('ul', 'list card'); ul.append(upRow()); root.append(ul); }
+  } else if (cwd && (media.length || !docs.length)) { const ul = el('ul', 'list card'); ul.append(upRow()); root.append(ul); }
   if (media.length) {
     const byDate = fSort === 'new' || fSort === 'old';
     const groups = [];
@@ -386,7 +386,7 @@ function renderFiles(list) {
   }
   if (docs.length) {
     root.append(secHead('Документы', docs.length + ''));
-    const ul = el('ul', 'list card'); docs.forEach(f => ul.append(fileRow(f, undefined, () => openView(f)))); root.append(ul);
+    const ul = el('ul', 'list card'); if (cwd && !folders.length && !media.length) ul.append(upRow()); docs.forEach(f => ul.append(fileRow(f, undefined, () => openView(f)))); root.append(ul);
   }
 }
 let curFiles = [], gridMode = false;
