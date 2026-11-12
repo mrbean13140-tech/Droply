@@ -404,3 +404,4 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
 .row-acts .icon-btn.share:hover{color:var(--fg);background:var(--s3)}
 .row-acts .icon-btn.share svg{width:17px;height:17px}
 main{padding-bottom:calc(130px + env(safe-area-inset-bottom))}
+.dock .tab.active{background:none;box-shadow:none}
