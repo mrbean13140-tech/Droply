@@ -18,7 +18,7 @@ import (
 )
 
 func TestExtras(t *testing.T) {
-	dir := t.TempDir()
+	dir, _ := os.MkdirTemp("", "extras") // не TempDir: события пишутся в фоне и после конца теста
 	cfg := &Config{DataDir: dir, MaxFileMB: 76, QuotaGB: 1, UserQuotaGB: 1, TTLDays: 7, MaxUsers: 20}
 	s := &srv{cfg: cfg, files: filepath.Join(dir, "files"), part: filepath.Join(dir, "part"), maxFile: 76 << 20, quota: 1 << 30, uquota: 1 << 30,
 		failures: map[string][]time.Time{}, regs: map[string][]time.Time{}, alerted: map[string]time.Time{}}
