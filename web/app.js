@@ -286,9 +286,18 @@ function secHead(title, note) {
   const h = el('div', 'sec'); h.append(el('b', '', title)); if (note) h.append(el('span', '', note)); return h;
 }
 function thumbURL(f, dir) { return '/api/thumb?name=' + encodeURIComponent(f.name) + (dir ? '&dir=' + encodeURIComponent(dir) : '') + '&v=' + f.mtime; }
+let mediaView = 'tile'; try { if (localStorage.getItem('mediaView') === 'list') mediaView = 'list'; } catch (e) {}
+const VIEW_IC = { tile: '<svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+  list: '<svg class="ic" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><rect x="3.5" y="4.5" width="3" height="3" rx=".8"/><rect x="3.5" y="10.5" width="3" height="3" rx=".8"/><rect x="3.5" y="16.5" width="3" height="3" rx=".8"/></svg>' };
+function syncViewBtn() { const b = $('#viewBtn'); if (!b) return; b.innerHTML = VIEW_IC[mediaView === 'tile' ? 'list' : 'tile']; b.title = mediaView === 'tile' ? 'Фото и видео списком' : 'Фото и видео плиткой'; }
+function mediaThumb(f, dir) {
+  if (!/\.(jpe?g|png|gif)$/i.test(f.name)) return badge(f.name);
+  const x = el('div', 'rth'), im = el('img'); im.loading = 'lazy'; im.alt = ''; im.src = thumbURL(f, dir !== undefined ? dir : cwd);
+  im.onerror = () => { x.replaceWith(badge(f.name)); }; x.append(im); return x;
+}
 function fileRow(f, dir, onOpen) {
   const li = el('li', 'clickable');
-  const b = f.dir ? (() => { const x = el('div', 'badge fi fold'); x.innerHTML = FI.folder; return x; })() : (isMedia(f) ? badge(f.name) : docIcon(f.name));
+  const b = f.dir ? (() => { const x = el('div', 'badge fi fold'); x.innerHTML = FI.folder; return x; })() : (isMedia(f) ? mediaThumb(f, dir) : docIcon(f.name));
   const info = el('div', 'info');
   const meta = f.dir ? `${f.count || 0} ${plural(f.count || 0, 'файл', 'файла', 'файлов')} · ${fmt(f.size)}` : `${fmt(f.size)} · ${ago(f.mtime)}`;
   info.append(el('div', 'name', f.name), el('div', 'meta', (dir !== undefined && dir !== cwd ? '/' + (dir || 'Мои файлы') + ' · ' : '') + meta));
@@ -381,7 +390,8 @@ function renderFiles(list) {
     }
     for (const [g, fs] of groups) {
       root.append(secHead(byDate ? g : (fType === 'vid' ? 'Видео' : fType === 'img' ? 'Фото' : 'Фото и видео'), fs.length + ''));
-      const grid = el('div', 'tiles'); fs.forEach(f => grid.append(mediaTile(f))); root.append(grid);
+      if (mediaView === 'list') { const ul = el('ul', 'list card'); fs.forEach(f => ul.append(fileRow(f, undefined, () => openView(f)))); root.append(ul); }
+      else { const grid = el('div', 'tiles'); fs.forEach(f => grid.append(mediaTile(f))); root.append(grid); }
     }
   }
   if (docs.length) {
@@ -939,3 +949,6 @@ function addEyes(root) {
 
 // очистка поиска
 $('#qx').onclick = () => { const q = $('#q'); q.value = ''; $('#qx').hidden = true; loadFiles(); q.focus(); };
+
+syncViewBtn();
+$('#viewBtn').onclick = () => { mediaView = mediaView === 'tile' ? 'list' : 'tile'; try { localStorage.setItem('mediaView', mediaView); } catch (e) {} syncViewBtn(); renderFiles(curFiles); };
