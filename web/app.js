@@ -486,7 +486,7 @@ fm.addEventListener('click', e => { if (e.target === fm) fm.close(); });
 $('#fmCancel').onclick = () => fm.close();
 function dlFile(name, dir, size) {
   const a = el('a'); a.href = '/f/' + encodeURIComponent(name) + (dir ? '?dir=' + encodeURIComponent(dir) : '');
-  a.dataset.dl = name; a.dataset.size = size; document.body.append(a); a.click(); a.remove();
+  a.dataset.dl = name; a.dataset.size = size; a.download = name; document.body.append(a); a.click(); a.remove();
 }
 $('#fmRename').onclick = async () => {
   fm.close();
@@ -562,7 +562,7 @@ function openView(f, stepping) {
     body.append(m);
   } else body.append(el('p', 'muted', 'Предпросмотр для этого типа файлов недоступен.'));
   $('#viewName').textContent = f.name;
-  $('#viewDl').href = '/f/' + encodeURIComponent(f.name) + q; $('#viewDl').dataset.dl = f.name; $('#viewDl').dataset.size = f.size;
+  $('#viewDl').href = '/f/' + encodeURIComponent(f.name) + q; $('#viewDl').dataset.dl = f.name; $('#viewDl').dataset.size = f.size; $('#viewDl').download = f.name;
   $('#viewShare').onclick = () => { view.close(); openShare(rel(f.name)); };
   if (!stepping) view.showModal();
 }
@@ -780,7 +780,8 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferr
 // Поэтому там: до 150 МБ — системное меню «Поделиться» (Сохранить видео / в Файлы), больше — отдельное окно Safari с кнопкой «Готово».
 document.addEventListener('click', async e => {
   const a = e.target.closest('a[data-dl]');
-  if (!a || !standalone()) return;
+  // только установленное приложение на iPhone/iPad; на ПК и Android — обычное скачивание (меню «Поделиться» Windows файл не сохраняет)
+  if (!a || !standalone() || platform() !== 'IOS') return;
   e.preventDefault();
   const size = +a.dataset.size || 0;
   const canFiles = navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.txt', { type: 'text/plain' })] });
