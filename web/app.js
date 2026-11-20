@@ -966,7 +966,7 @@ $('#viewBtn').onclick = () => { mediaView = mediaView === 'tile' ? 'list' : 'til
       const r = await api('GET', '/api/passkey/register/begin'); if (!r.ok) throw new Error(await r.text());
       const { cid, options: o } = await r.json();
       o.challenge = unb64u(o.challenge); o.user.id = unb64u(o.user.id);
-      (o.excludeCredentials || []).forEach(c => c.id = unb64u(c.id));
+      o.excludeCredentials = (o.excludeCredentials || []); o.excludeCredentials.forEach(c => c.id = unb64u(c.id));
       const c = await navigator.credentials.create({ publicKey: o });
       const ua = navigator.userAgent, dev = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Устройство';
       const f = await api('POST', '/api/passkey/register/finish', JSON.stringify({ cid, id: c.id, device: dev,

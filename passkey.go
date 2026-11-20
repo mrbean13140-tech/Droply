@@ -194,7 +194,7 @@ func (s *srv) pkRegisterBegin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, ch := pkPut("reg", u.Name)
-	var excl []map[string]any
+	excl := []map[string]any{} // не nil: Safari падает на null («Value is not a sequence»)
 	for _, p := range u.Passkeys {
 		excl = append(excl, map[string]any{"type": "public-key", "id": p.ID})
 	}
