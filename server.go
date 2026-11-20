@@ -114,6 +114,12 @@ func serve(cfg *Config) {
 	mux.HandleFunc("GET /api/settings", s.adminOnly(s.adminSettings))
 	mux.HandleFunc("POST /api/settings", s.adminOnly(s.csrf(s.adminSettings)))
 	mux.HandleFunc("GET /api/me", s.auth(s.me))
+	mux.HandleFunc("POST /api/ping", s.auth(s.csrf(s.ping)))
+	mux.HandleFunc("GET /api/passkey/register/begin", s.auth(s.pkRegisterBegin))
+	mux.HandleFunc("POST /api/passkey/register/finish", s.auth(s.csrf(s.pkRegisterFinish)))
+	mux.HandleFunc("DELETE /api/passkey", s.auth(s.csrf(s.pkClear)))
+	mux.HandleFunc("GET /api/passkey/login/begin", s.pkLoginBegin)
+	mux.HandleFunc("POST /api/passkey/login/finish", s.csrf(s.pkLoginFinish))
 	mux.HandleFunc("POST /api/me/password", s.auth(s.csrf(s.changePassword)))
 	mux.HandleFunc("GET /api/users", s.adminOnly(s.listUsers))
 	mux.HandleFunc("POST /api/users", s.adminOnly(s.csrf(s.saveUser)))
@@ -549,7 +555,10 @@ func (s *srv) upInitFor(w http.ResponseWriter, r *http.Request, u *user, m partM
 
 const maxChunk = 16 << 20
 
-func (s *srv) upChunk(w http.ResponseWriter, r *http.Request) { s.upChunkFor(w, r, userOf(r), nil) }
+func (s *srv) upChunk(w http.ResponseWriter, r *http.Request) {
+	s.touchSession(w, r) // идёт загрузка — сессия не гаснет
+	s.upChunkFor(w, r, userOf(r), nil)
+}
 
 func (s *srv) upChunkFor(w http.ResponseWriter, r *http.Request, u *user, onDone func(name string, size int64)) {
 	id := r.PathValue("id")

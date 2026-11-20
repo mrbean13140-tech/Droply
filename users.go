@@ -23,20 +23,21 @@ import (
 // Пользователи: у каждого свой каталог файлов, свои ссылки и своя квота.
 
 type user struct {
-	Name      string `json:"name"`
-	Email     string `json:"email,omitempty"` // для автовхода через Cloudflare Access
-	Salt      string `json:"salt"`
-	Hash      string `json:"hash"`
-	Admin     bool   `json:"admin,omitempty"`
-	QuotaMB   int64  `json:"quota_mb,omitempty"` // 0 = по умолчанию
-	Created   int64  `json:"created"`
-	Keep      bool   `json:"keep,omitempty"`        // файлы хранятся бессрочно (назначает админ)
-	MaxFileMB int64  `json:"max_file_mb,omitempty"` // лимит размера файла; 0 = общий
-	WeakPw    bool   `json:"weak_pw,omitempty"`     // пароль не проходит текущие правила — попросить сменить
-	Pending   bool   `json:"pending,omitempty"`     // зарегистрировался, но не подключил 2FA
-	TOTP      string `json:"totp,omitempty"`        // секрет 2FA (подключена)
-	TOTPNew   string `json:"totp_new,omitempty"`    // секрет на этапе подключения
-	LastOTP   int64  `json:"last_otp,omitempty"`    // последний принятый шаг (защита от повтора)
+	Name      string    `json:"name"`
+	Email     string    `json:"email,omitempty"` // для автовхода через Cloudflare Access
+	Salt      string    `json:"salt"`
+	Hash      string    `json:"hash"`
+	Admin     bool      `json:"admin,omitempty"`
+	QuotaMB   int64     `json:"quota_mb,omitempty"` // 0 = по умолчанию
+	Created   int64     `json:"created"`
+	Keep      bool      `json:"keep,omitempty"`        // файлы хранятся бессрочно (назначает админ)
+	MaxFileMB int64     `json:"max_file_mb,omitempty"` // лимит размера файла; 0 = общий
+	WeakPw    bool      `json:"weak_pw,omitempty"`     // пароль не проходит текущие правила — попросить сменить
+	Pending   bool      `json:"pending,omitempty"`     // зарегистрировался, но не подключил 2FA
+	TOTP      string    `json:"totp,omitempty"`        // секрет 2FA (подключена)
+	TOTPNew   string    `json:"totp_new,omitempty"`    // секрет на этапе подключения
+	LastOTP   int64     `json:"last_otp,omitempty"`    // последний принятый шаг (защита от повтора)
+	Passkeys  []passkey `json:"passkeys,omitempty"`    // вход по Face ID (WebAuthn)
 }
 
 type userStore struct {
@@ -198,10 +199,47 @@ func (s *srv) sessionSig(name, exp, hash string) string {
 	return hex.EncodeToString(m.Sum(nil))
 }
 
+// Сессия «ld» = имя.exp.iat.подпись: гаснет через 10 минут без действий (страница продлевает её через
+// POST /api/ping при касаниях; загрузка файла тоже продлевает) и в любом случае через 12 часов после входа.
+const sessionIdle = 10 * time.Minute
+const sessionMax = 12 * time.Hour
+
 func (s *srv) setSession(w http.ResponseWriter, r *http.Request, u *user) {
-	exp := strconv.FormatInt(time.Now().Add(30*24*time.Hour).Unix(), 10)
+	s.setSessionIat(w, r, u, time.Now().Unix())
+}
+
+func (s *srv) setSessionIat(w http.ResponseWriter, r *http.Request, u *user, iat int64) {
+	expT := time.Now().Add(sessionIdle)
+	if m := time.Unix(iat, 0).Add(sessionMax); expT.After(m) {
+		expT = m
+	}
+	exp := strconv.FormatInt(expT.Unix(), 10) + "." + strconv.FormatInt(iat, 10)
 	http.SetCookie(w, &http.Cookie{Name: "ld", Value: u.Name + "." + exp + "." + s.sessionSig(u.Name, exp, u.Hash), Path: "/", HttpOnly: true,
-		Secure: isHTTPS(r), SameSite: http.SameSiteLaxMode, MaxAge: 30 * 24 * 3600})
+		Secure: isHTTPS(r), SameSite: http.SameSiteLaxMode, MaxAge: int(sessionMax.Seconds())})
+}
+
+// продлить сессию (действие пользователя); false — сессии нет
+func (s *srv) touchSession(w http.ResponseWriter, r *http.Request) bool {
+	c, err := r.Cookie("ld")
+	if err != nil {
+		return false
+	}
+	parts := strings.Split(c.Value, ".")
+	u := s.currentUser(r)
+	if u == nil || len(parts) != 4 {
+		return u != nil // вход через Cloudflare Access — без cookie
+	}
+	iat, _ := strconv.ParseInt(parts[2], 10, 64)
+	s.setSessionIat(w, r, u, iat)
+	return true
+}
+
+func (s *srv) ping(w http.ResponseWriter, r *http.Request) {
+	if !s.touchSession(w, r) {
+		http.Error(w, "unauthorized", 401)
+		return
+	}
+	writeJSON(w, map[string]any{"ok": true, "idle": int(sessionIdle.Seconds())})
 }
 
 func (s *srv) currentUser(r *http.Request) *user {
@@ -217,15 +255,16 @@ func (s *srv) currentUser(r *http.Request) *user {
 		return nil
 	}
 	parts := strings.Split(c.Value, ".")
-	if len(parts) != 3 {
+	if len(parts) != 4 { // старые 30-дневные сессии (3 части) больше не принимаются
 		return nil
 	}
 	exp, err := strconv.ParseInt(parts[1], 10, 64)
-	if err != nil || time.Now().Unix() > exp {
+	iat, err2 := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil || err2 != nil || time.Now().Unix() > exp || time.Since(time.Unix(iat, 0)) > sessionMax {
 		return nil
 	}
 	u := s.users.get(parts[0])
-	if u == nil || !hmac.Equal([]byte(parts[2]), []byte(s.sessionSig(u.Name, parts[1], u.Hash))) {
+	if u == nil || !hmac.Equal([]byte(parts[3]), []byte(s.sessionSig(u.Name, parts[1]+"."+parts[2], u.Hash))) {
 		return nil
 	}
 	return u
@@ -295,7 +334,7 @@ func (s *srv) logout(w http.ResponseWriter, r *http.Request) {
 func (s *srv) me(w http.ResponseWriter, r *http.Request) {
 	u := userOf(r)
 	lan := r.Context().Value(lanKey{}) != nil
-	writeJSON(w, map[string]any{"name": u.Name, "admin": u.Admin && lan, "email": u.Email, "totp": u.TOTP != "", "keep": u.Keep, "weak_pw": u.WeakPw})
+	writeJSON(w, map[string]any{"name": u.Name, "admin": u.Admin && lan, "email": u.Email, "totp": u.TOTP != "", "keep": u.Keep, "weak_pw": u.WeakPw, "passkeys": len(u.Passkeys), "idle": int(sessionIdle.Seconds())})
 }
 
 func (s *srv) changePassword(w http.ResponseWriter, r *http.Request) {

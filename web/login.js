@@ -60,3 +60,25 @@ function addEyes(root) {
   });
 }
 addEyes(document);
+
+// вход по Face ID (passkey) — если на этом устройстве он включён
+const b64u = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0));
+if (q.has('idle')) showErr('Сеанс закрыт: 10 минут без действий');
+if (step === 'login' && window.PublicKeyCredential && location.protocol === 'https:' && localStorage.getItem('droply-fid') === '1') {
+  const b = $('#fidLogin'); b.hidden = false;
+  b.onclick = async () => {
+    b.disabled = true;
+    try {
+      const r = await fetch('/api/passkey/login/begin'); if (!r.ok) throw new Error(await r.text());
+      const { cid, options: o } = await r.json();
+      o.challenge = unb64u(o.challenge);
+      const c = await navigator.credentials.get({ publicKey: o });
+      const f = await fetch('/api/passkey/login/finish', { method: 'POST', headers: { 'X-Landrop': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({
+        cid, id: c.id, clientDataJSON: b64u(c.response.clientDataJSON), authenticatorData: b64u(c.response.authenticatorData),
+        signature: b64u(c.response.signature), userHandle: c.response.userHandle ? b64u(c.response.userHandle) : '' }) });
+      if (!f.ok) throw new Error(await f.text());
+      location.href = '/';
+    } catch (e) { showErr(e.name === 'NotAllowedError' ? 'Отменено' : e.message); b.disabled = false; }
+  };
+}

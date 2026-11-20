@@ -17,3 +17,7 @@
 Шаблон: `dist/droply-rootfs.tar.gz` (SHA256 рядом). Скачать в хранилище шаблонов:
 `https://raw.githubusercontent.com/mrbean13140-tech/droply/main/dist/droply-rootfs.tar.gz`
 Создать LXC: `ostype=unmanaged`, unprivileged, 192 МБ ОЗУ, том `/data` с `mountoptions=noexec;nosuid;nodev`. Сеть задаётся в `/etc/landrop.json` шаблона (`etc-landrop.json`).
+
+## Вход по Face ID и автовыход (2026-11-20)
+- Face ID (passkey, WebAuthn ES256, без внешних библиотек — `passkey.go`): включается в меню аккаунта «Включить вход по Face ID» после обычного входа (пароль + 2FA); на странице входа — кнопка «Войти по Face ID». Только по https-домену.
+- Сессия `ld` = имя.exp.iat.подпись: гаснет через 10 минут без действий (страница шлёт `POST /api/ping` при касаниях, загрузка файла продлевает сама) и через 12 часов в любом случае. Старые 30-дневные сессии больше не принимаются.

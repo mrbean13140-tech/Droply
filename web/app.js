@@ -953,3 +953,42 @@ $('#qx').onclick = () => { const q = $('#q'); q.value = ''; $('#qx').hidden = tr
 
 syncViewBtn();
 $('#viewBtn').onclick = () => { mediaView = mediaView === 'tile' ? 'list' : 'tile'; try { localStorage.setItem('mediaView', mediaView); } catch (e) {} syncViewBtn(); renderFiles(curFiles); };
+
+// ---- Face ID: включить на этом устройстве ----
+(function () {
+  const b64u = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0));
+  const btn = $('#fidOn'); if (!btn) return;
+  btn.hidden = !(window.PublicKeyCredential && location.protocol === 'https:');
+  if (localStorage.getItem('droply-fid') === '1') btn.textContent = 'Face ID включён ✓ (включить заново)';
+  btn.onclick = async () => {
+    try {
+      const r = await api('GET', '/api/passkey/register/begin'); if (!r.ok) throw new Error(await r.text());
+      const { cid, options: o } = await r.json();
+      o.challenge = unb64u(o.challenge); o.user.id = unb64u(o.user.id);
+      (o.excludeCredentials || []).forEach(c => c.id = unb64u(c.id));
+      const c = await navigator.credentials.create({ publicKey: o });
+      const ua = navigator.userAgent, dev = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Устройство';
+      const f = await api('POST', '/api/passkey/register/finish', JSON.stringify({ cid, id: c.id, device: dev,
+        clientDataJSON: b64u(c.response.clientDataJSON), attestationObject: b64u(c.response.attestationObject) }), jsonHdr);
+      if (!f.ok) throw new Error(await f.text());
+      localStorage.setItem('droply-fid', '1'); btn.textContent = 'Face ID включён ✓ (включить заново)'; toast('Вход по Face ID включён');
+    } catch (e) { toast(e.name === 'InvalidStateError' ? 'Face ID на этом устройстве уже включён' : e.name === 'NotAllowedError' ? 'Отменено' : e.message); if (e.name === 'InvalidStateError') localStorage.setItem('droply-fid', '1'); }
+  };
+})();
+
+// ---- автовыход: 10 минут без действий ----
+(function () {
+  const IDLE = 10 * 60 * 1000; let last = Date.now(), pinged = 0;
+  async function expire() { try { await fetch('/api/logout', { method: 'POST', headers: H, credentials: 'same-origin' }); } catch {} location.href = '/login.html?idle=1'; }
+  function act() {
+    const now = Date.now(); if (now - last > IDLE) return expire();
+    last = now;
+    if (now - pinged > 30000) { pinged = now; fetch('/api/ping', { method: 'POST', headers: H, credentials: 'same-origin' }).then(r => { if (r.status === 401) location.href = '/login.html?idle=1'; }).catch(() => {}); }
+  }
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(e => addEventListener(e, act, { passive: true }));
+  addEventListener('scroll', act, { passive: true, capture: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (Date.now() - last > IDLE) expire(); else act(); } });
+  const busy = () => { const q = document.getElementById('queue'); return q && q.children.length > 0; }; // идёт загрузка
+  setInterval(() => { if (busy()) last = Date.now(); else if (Date.now() - last > IDLE) expire(); }, 15000);
+})();
