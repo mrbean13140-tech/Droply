@@ -253,5 +253,8 @@ func (s *srv) adminSettings(w http.ResponseWriter, r *http.Request) {
 			s.site.setReg(req.Registration)
 		}
 	}
-	writeJSON(w, map[string]any{"registration": s.site.reg(), "max_users": s.cfg.MaxUsers})
+	total, free := diskStat(s.cfg.DataDir)
+	files, _ := dirSize(s.files, s.part)
+	writeJSON(w, map[string]any{"registration": s.site.reg(), "max_users": s.cfg.MaxUsers,
+		"disk": map[string]int64{"total": total, "free": free, "files": files, "quota": s.totalQuota()}})
 }

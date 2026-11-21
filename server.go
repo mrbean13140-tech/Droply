@@ -273,6 +273,18 @@ func (s *srv) userMaxFile(u *user) int64 {
 	}
 	return s.maxFile
 }
+
+// totalQuota — общая квота: quota_gb из конфига или (0) — 95% тома с данными.
+func (s *srv) totalQuota() int64 {
+	if s.quota > 0 {
+		return s.quota
+	}
+	if t, _ := diskStat(s.cfg.DataDir); t > 0 {
+		return t / 100 * 95
+	}
+	return 18 << 30
+}
+
 func (s *srv) userQuota(u *user) int64 {
 	if u.QuotaMB > 0 {
 		return u.QuotaMB << 20
@@ -684,7 +696,7 @@ func (s *srv) checkRoom(u *user, need int64) string {
 		return fmt.Sprintf("квота заполнена: занято %.0f из %.0f МБ — удалите ненужные файлы", float64(uUsed)/(1<<20), float64(uq)/(1<<20))
 	}
 	all, _ := dirSize(s.files, s.part)
-	if all+need > s.quota {
+	if all+need > s.totalQuota() {
 		return "на сервере закончилось место — попробуйте позже"
 	}
 	return ""

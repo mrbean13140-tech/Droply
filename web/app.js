@@ -720,7 +720,17 @@ $('#regToggle').onchange = async e => {
   toast(e.target.checked ? 'Регистрация открыта' : 'Регистрация закрыта');
 };
 async function loadUsers() {
-  api('GET', '/api/settings').then(r => r.json()).then(j => $('#regToggle').checked = j.registration);
+  api('GET', '/api/settings').then(r => r.json()).then(j => {
+    $('#regToggle').checked = j.registration;
+    const d = j.disk;
+    if (d && d.total) {
+      const used = d.total - d.free, pc = used / d.total * 100;
+      $('#diskTxt').textContent = `Хранилище: файлы ${fmt(d.files)} · диск занят ${fmt(used)} из ${fmt(d.total)} · свободно ${fmt(d.free)}`;
+      $('#diskBar').style.width = Math.min(100, pc).toFixed(1) + '%';
+      $('#diskBox').classList.toggle('warn', pc >= 90);
+      $('#diskBox').hidden = false;
+    }
+  });
   const r = await api('GET', '/api/users');
   const list = await r.json();
   const ul = $('#userList'); ul.replaceChildren();

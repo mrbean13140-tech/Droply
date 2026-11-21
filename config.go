@@ -20,7 +20,7 @@ type Config struct {
 	DataDir        string   `json:"data_dir"`     // /data
 	MaxFileGB      float64  `json:"max_file_gb"`
 	MaxFileMB      int64    `json:"max_file_mb"`   // приоритетнее max_file_gb
-	QuotaGB        float64  `json:"quota_gb"`      // общая
+	QuotaGB        float64  `json:"quota_gb"`      // общая; 0 — 95% тома /data
 	UserQuotaGB    float64  `json:"user_quota_gb"` // на пользователя по умолчанию
 	TTLDays        int      `json:"ttl_days"`
 	MaxUsers       int      `json:"max_users"`

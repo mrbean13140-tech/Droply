@@ -437,3 +437,4 @@ main{padding-bottom:calc(130px + env(safe-area-inset-bottom))}
 html,body{overflow-x:hidden;max-width:100%;overscroll-behavior-x:none}
 main{overflow-x:clip}
 .utabs button{min-width:0}
+.disk{margin:4px 0 12px}.disk .meta{font-size:13px;opacity:.75}.disk.warn .bar i{background:#d33}
