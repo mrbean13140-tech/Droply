@@ -987,9 +987,9 @@ $('#viewBtn').onclick = () => { mediaView = mediaView === 'tile' ? 'list' : 'til
   };
 })();
 
-// ---- автовыход: 10 минут без действий ----
+// ---- автовыход: сутки без заходов ----
 (function () {
-  const IDLE = 10 * 60 * 1000; let last = Date.now(), pinged = 0;
+  const IDLE = 24 * 3600 * 1000; let last = Date.now(), pinged = 0;
   async function expire() { try { await fetch('/api/logout', { method: 'POST', headers: H, credentials: 'same-origin' }); } catch {} location.href = '/login.html?idle=1'; }
   function act() {
     const now = Date.now(); if (now - last > IDLE) return expire();

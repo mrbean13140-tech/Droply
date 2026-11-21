@@ -201,8 +201,8 @@ func (s *srv) sessionSig(name, exp, hash string) string {
 
 // Сессия «ld» = имя.exp.iat.подпись: гаснет через 10 минут без действий (страница продлевает её через
 // POST /api/ping при касаниях; загрузка файла тоже продлевает) и в любом случае через 12 часов после входа.
-const sessionIdle = 10 * time.Minute
-const sessionMax = 12 * time.Hour
+const sessionIdle = 24 * time.Hour
+const sessionMax = 30 * 24 * time.Hour
 
 func (s *srv) setSession(w http.ResponseWriter, r *http.Request, u *user) {
 	s.setSessionIat(w, r, u, time.Now().Unix())
